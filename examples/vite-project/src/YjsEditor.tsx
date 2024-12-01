@@ -11,6 +11,7 @@ import {
   ContentUuid,
   Content,
   ContentReference,
+  numberInput,
 } from '@editor/model'
 import { createBinder } from 'react-immer-yjs'
 import * as Y from 'yjs'
@@ -30,21 +31,23 @@ const objectSchema = objectInput({
     description: textInput({
       label: 'Description',
     }),
-    // paddingTop: numberInput({
-    //   label: 'Padding Top',
-    // }),
-    // body: objectInput({
-    //   fields: {
-    //     title: textInput({
-    //       label: 'Title',
-    //     }),
-    //     description: textInput({
-    //       label: 'Description',
-    //     }),
-    //   },
-    // }),
+    paddingTop: numberInput({
+      label: 'Padding Top',
+    }),
+    body: objectInput({
+      fields: {
+        title: textInput({
+          label: 'Title',
+        }),
+        description: textInput({
+          label: 'Description',
+        }),
+      },
+    }),
   },
 })
+
+export type ContentTree = unknown
 
 const contentTree = {
   tag: 'object',
@@ -60,14 +63,38 @@ const contentTree = {
       uuid: randomUuid(),
       value: 'Description',
     },
+    paddingTop: {
+      tag: 'number',
+      uuid: randomUuid(),
+      value: 10,
+    },
+    body: {
+      tag: 'object',
+      uuid: randomUuid(),
+      value: {
+        title: {
+          tag: 'text',
+          uuid: randomUuid(),
+          value: 'Title',
+        },
+        description: {
+          tag: 'text',
+          uuid: randomUuid(),
+          value: 'Description',
+        },
+      },
+    },
   },
 }
 
-const flattenContent = (content): ContentStore => {
+const flattenContent = (content: ContentTree): ContentStore => {
   const result: Record<ContentUuid, Content> = {}
 
   switch (content.tag) {
     case 'text':
+      result[content.uuid] = content
+      break
+    case 'number':
       result[content.uuid] = content
       break
     case 'object':
@@ -91,6 +118,31 @@ const flattenContent = (content): ContentStore => {
       break
   }
   return result
+}
+
+const unflattenContent = (
+  content: ContentStore,
+  rootUuid: ContentUuid,
+): ContentTree => {
+  const root = content[rootUuid]
+  switch (root.tag) {
+    case 'text':
+      return root
+    case 'number':
+      return root
+    case 'object':
+      return {
+        tag: 'object',
+        uuid: root.uuid,
+        value: Object.entries(root.value).reduce(
+          (acc, [key, ref]) => {
+            acc[key] = unflattenContent(content, ref.valueUuid)
+            return acc
+          },
+          {} as Record<string, ContentTree>,
+        ),
+      }
+  }
 }
 
 const rootUuid = contentTree.uuid
@@ -139,7 +191,7 @@ const ContentJsonViewWithContext = () => {
         p: 2,
       }}
     >
-      <code>{JSON.stringify(state, null, 2)}</code>
+      <code>{JSON.stringify(unflattenContent(state, rootUuid), null, 2)}</code>
     </Box>
   )
 }

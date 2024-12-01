@@ -1,7 +1,7 @@
 /**
  * Text
  */
-import { equalsGuard, isString, objectGuard } from 'pure-parse'
+import { equalsGuard, isNumber, isString, objectGuard } from 'pure-parse'
 
 export type ContentUuid = string
 export const isContentUuid = isString
@@ -39,6 +39,13 @@ export type NumberContent = {
   uuid: ContentUuid
   value: number
 }
+
+export const isNumberContent = objectGuard<NumberContent>({
+  tag: equalsGuard('number'),
+  uuid: isContentUuid,
+  value: isNumber,
+})
+
 export type NumberContentInput = {
   tag: 'number-input'
   label?: string

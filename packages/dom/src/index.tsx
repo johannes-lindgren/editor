@@ -37,7 +37,12 @@ import {
   ContentStore,
   Content,
   isTextContent,
+  isNumberContent,
 } from '@editor/model'
+import { NumberInput } from '@mui/base/Unstable_NumberInput/NumberInput'
+import { CustomNumberInput } from './components/CustomNumberInput.tsx'
+import { Label } from './components/Label.tsx'
+import { StyledInput } from './components/Input.tsx'
 
 type UpdateFn<T> = (draft: T) => void
 
@@ -182,10 +187,8 @@ const TextContentInputView: FunctionComponent<{
 
   return (
     <FormControl>
-      <InputLabel htmlFor={inputId}>
-        {schema.label} ({uuid})
-      </InputLabel>
-      <OutlinedInput
+      <Label htmlFor={inputId}>{schema.label}</Label>
+      <StyledInput
         label={schema.label}
         id={inputId}
         aria-describedby={helperTextId}
@@ -196,29 +199,60 @@ const TextContentInputView: FunctionComponent<{
   )
 })
 
-// const NumberContentInputView: FunctionComponent<{
-//   schema: NumberContentInput
-//   value: NumberContent
-//   onUpdate: Updater<NumberContent>
-// }> = memo((props) => {
-//   const { schema, value, onUpdate } = props
-//   const inputId = useId()
-//   const helperTextId = useId()
-//   const handleInput = (_e, value) => {
-//     onUpdate(() => value)
-//   }
-//   return (
-//     <FormControl>
-//       <FormHelperText id={helperTextId}>{schema.label}</FormHelperText>
-//       <CustomNumberInput
-//         id={inputId}
-//         aria-describedby={helperTextId}
-//         value={value}
-//         onChange={handleInput}
-//       />
-//     </FormControl>
-//   )
-// })
+const NumberContentInputView: FunctionComponent<{
+  schema: NumberContentInput
+  uuid: ContentUuid
+}> = memo((props) => {
+  const { schema, uuid } = props
+  const selectByUuid = useSelectByUuid(uuid)
+  const content = useSelector(selectByUuid)
+  const inputId = useId()
+  const helperTextId = useId()
+  const update = useUpdater()
+  const handleInput = (e, value: number | null) => {
+    // Must save in a variable because e will become destroyed after the event handler finishes,
+    //  and the producer callback function might be called later
+    if (value === null) {
+      return
+    }
+    update((draft) => {
+      const currentContent = draft[uuid]
+      if (!isNumberContent(currentContent)) {
+        return
+      }
+      draft[uuid] = {
+        ...currentContent,
+        value,
+      }
+    })
+  }
+
+  if (content === undefined) {
+    return <ContentNotFoundView uuid={uuid} />
+  }
+
+  if (!isNumberContent(content)) {
+    return (
+      <UnknownContentView
+        content={content}
+        schema={schema}
+      />
+    )
+  }
+
+  return (
+    <FormControl>
+      <Label htmlFor={inputId}>{schema.label}</Label>
+      <CustomNumberInput
+        label={schema.label}
+        id={inputId}
+        aria-describedby={helperTextId}
+        value={content.value}
+        onChange={handleInput}
+      />
+    </FormControl>
+  )
+})
 
 const ObjectContentInputView: FunctionComponent<{
   schema: ObjectContentInput
@@ -230,7 +264,7 @@ const ObjectContentInputView: FunctionComponent<{
   const value = useSelector(selectByUuid)
 
   if (value === undefined) {
-    return <div>Could not find content by uuid {uuid}</div>
+    return <ContentNotFoundView uuid={uuid} />
   }
 
   return (
@@ -270,13 +304,12 @@ export const ContentInputView: FunctionComponent<{
         />
       )
     case 'number-input':
-      return 'todo'
-    // return (
-    //   <NumberContentInputView
-    //     schema={schema}
-    //   uuid={uuid}
-    //   />
-    // )
+      return (
+        <NumberContentInputView
+          schema={schema}
+          uuid={uuid}
+        />
+      )
   }
 })
 
