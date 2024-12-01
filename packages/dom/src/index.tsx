@@ -6,7 +6,7 @@ import {
   Stack,
   Typography,
 } from '@mui/material'
-import { FunctionComponent, useId } from 'react'
+import { FormEventHandler, FunctionComponent, useId } from 'react'
 import {
   ContentInput,
   objectInput,
@@ -18,16 +18,24 @@ import {
 } from '@editor/model'
 import { CustomNumberInput } from './components/CustomNumberInput.tsx'
 
+type Updater<T> = (fn: (draft: T) => void) => void
+
 const TextContentInputView: FunctionComponent<{
   schema: TextContentInput
+  onUpdate: Updater<TextContentInput>
 }> = (props) => {
   const { schema } = props
   const inputId = useId()
   const helperTextId = useId()
+  const handleInput: FormEventHandler<HTMLDivElement> = (e) => {}
   return (
     <FormControl>
       <InputLabel htmlFor={inputId}>{schema.label}</InputLabel>
-      <OutlinedInput id={inputId} aria-describedby={helperTextId} />
+      <OutlinedInput
+        id={inputId}
+        aria-describedby={helperTextId}
+        onInput={handleInput}
+      />
       <FormHelperText id={helperTextId}>
         We'll never share your email.
       </FormHelperText>
@@ -83,6 +91,13 @@ export const Editor: FunctionComponent = () => {
   return (
     <Stack>
       <Typography variant="h1">Editor</Typography>
+      <Typography variant="h2">Text</Typography>
+      <ContentInputView
+        schema={textInput({
+          label: 'Title',
+        })}
+      />
+      <Typography variant="h2">Object</Typography>
       <ContentInputView
         schema={objectInput({
           fields: {
