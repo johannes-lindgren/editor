@@ -1,8 +1,23 @@
 /**
  * Text
  */
+import { equalsGuard, isString, objectGuard } from 'pure-parse'
 
-export type TextContent = string
+export type ContentUuid = string
+export const isContentUuid = isString
+
+export type TextContent = {
+  tag: 'text'
+  uuid: ContentUuid
+  value: string
+}
+
+export const isTextContent = objectGuard<TextContent>({
+  tag: equalsGuard('text'),
+  uuid: isContentUuid,
+  value: isString,
+})
+
 export type TextContentInput = {
   tag: 'text-input'
   label?: string
@@ -19,7 +34,11 @@ export const textInput = (
  * Number
  */
 
-export type NumberContent = number
+export type NumberContent = {
+  tag: 'number'
+  uuid: ContentUuid
+  value: number
+}
 export type NumberContentInput = {
   tag: 'number-input'
   label?: string
@@ -33,18 +52,26 @@ export const numberInput = (
 })
 
 /**
+ * Reference
+ */
+
+export type ContentReference = {
+  tag: 'reference'
+  uuid: ContentUuid
+  valueUuid: ContentUuid
+}
+
+/**
  * Object
  */
 
 export type ObjectContent = {
-  [key: string]: Content
+  tag: 'object'
+  uuid: ContentUuid
+  value: Record<string, ContentReference>
 }
 export type ObjectContentInput = {
   tag: 'object-input'
-  fields: Record<string, ContentInput>
-}
-
-export type ObjectInputParams = {
   fields: Record<string, ContentInput>
 }
 
@@ -60,7 +87,10 @@ export const objectInput = (
  */
 
 export type Content = TextContent | ObjectContent | NumberContent
+
 export type ContentInput =
   | TextContentInput
   | ObjectContentInput
   | NumberContentInput
+
+export type ContentStore = Record<ContentUuid, Content>

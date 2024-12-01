@@ -1,7 +1,7 @@
-import { Editor } from '@editor/dom'
+import { YjsEditor } from './YjsEditor.tsx'
 
 function App() {
-  return <Editor />
+  return <YjsEditor />
 }
 
 export default App

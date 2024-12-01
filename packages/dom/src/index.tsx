@@ -1,20 +1,27 @@
 import {
+  Alert,
   FormControl,
-  FormHelperText,
   InputLabel,
   OutlinedInput,
   Stack,
   Typography,
+  Box,
+  AlertTitle,
 } from '@mui/material'
 import {
+  createContext,
   FormEventHandler,
   FunctionComponent,
   memo,
+  ReactNode,
   useCallback,
+  useContext,
   useEffect,
   useId,
   useMemo,
+  useRef,
   useState,
+  useSyncExternalStore,
 } from 'react'
 import {
   ContentInput,
@@ -26,212 +33,263 @@ import {
   numberInput,
   TextContent,
   NumberContent,
+  ContentUuid,
+  ContentStore,
+  Content,
+  isTextContent,
 } from '@editor/model'
-import { CustomNumberInput } from './components/CustomNumberInput.tsx'
-import { produce } from 'immer'
 
-type Updater<T> = (fn: (draft: T) => T | void) => void
+type UpdateFn<T> = (draft: T) => void
+
+export type EditorStore = {
+  subscribe: (fn: (data: unknown) => void) => () => void
+  get: () => ContentStore
+  update: (fn: UpdateFn<unknown>) => void
+}
+
+const StoreContext = createContext<EditorStore | undefined>(undefined)
+
+export const StoreContextProvider: FunctionComponent<{
+  store: EditorStore
+  children: ReactNode
+}> = (props) => {
+  const { store, children } = props
+  return <StoreContext.Provider value={store}>{children}</StoreContext.Provider>
+}
+
+const useUpdater = () => {
+  const store = useContext(StoreContext)!
+  return store.update
+}
+
+export const useSelector = <Selection,>(
+  selector: (store: ContentStore) => Selection,
+): Selection => {
+  const store = useContext(StoreContext)!
+
+  const getSnapshot = useCallback(
+    () => selector(store.get()),
+    [store, selector],
+  )
+
+  return useSyncExternalStore(store.subscribe, getSnapshot)
+}
+
+const useSelectByUuid = (uuid: ContentUuid) => {
+  return useCallback(
+    (store: ContentStore) => {
+      return store[uuid]
+    },
+    [uuid],
+  )
+}
+
+const JsonView: FunctionComponent<{ data: unknown }> = (props) => {
+  const { data } = props
+  return (
+    <Box
+      component="pre"
+      sx={{
+        border: 1,
+        borderColor: 'divider',
+        borderRadius: 1,
+        px: 2,
+        py: 1,
+      }}
+    >
+      <Box component="code">{JSON.stringify(data, null, 2)}</Box>
+    </Box>
+  )
+}
+
+export const UnknownContentView: FunctionComponent<{
+  schema: ContentInput
+  content: unknown
+}> = memo((props) => {
+  const { schema, content } = props
+  return (
+    <Alert severity="error">
+      <AlertTitle>
+        The content does not adhere to the expected structure.
+      </AlertTitle>
+      <Typography>
+        The schema expects the content to be of the following structure:
+      </Typography>
+      <Stack>
+        <Typography variant="subtitle1">Schema:</Typography>
+        <JsonView data={schema} />
+        <Typography variant="subtitle1">Content:</Typography>
+        <JsonView data={content} />
+      </Stack>
+    </Alert>
+  )
+})
+
+export const ContentNotFoundView: FunctionComponent<{
+  uuid: ContentUuid
+}> = memo((props) => {
+  const { uuid } = props
+  return (
+    <Alert severity="error">
+      <AlertTitle>Content not found</AlertTitle>
+      <Typography>
+        Could not find content by uuid {JSON.stringify(uuid)}
+      </Typography>
+    </Alert>
+  )
+})
 
 const TextContentInputView: FunctionComponent<{
   schema: TextContentInput
-  value: TextContent
-  onUpdate: Updater<TextContent>
+  uuid: ContentUuid
 }> = memo((props) => {
-  const { schema, onUpdate, value } = props
+  const { schema, uuid } = props
+  const selectByUuid = useSelectByUuid(uuid)
+  const content = useSelector(selectByUuid)
   const inputId = useId()
   const helperTextId = useId()
+  const update = useUpdater()
   const handleInput: FormEventHandler<
     HTMLInputElement | HTMLTextAreaElement
   > = (e) => {
     // Must save in a variable because e will become destroyed after the event handler finishes,
     //  and the producer callback function might be called later
     const value = e.currentTarget.value
-    onUpdate(() => value)
+    update((draft) => {
+      draft[uuid] = {
+        ...draft[uuid],
+        value,
+      }
+    })
   }
+
+  if (content === undefined) {
+    return <ContentNotFoundView uuid={uuid} />
+  }
+
+  if (!isTextContent(content)) {
+    return (
+      <UnknownContentView
+        content={content}
+        schema={schema}
+      />
+    )
+  }
+
   return (
     <FormControl>
-      <InputLabel htmlFor={inputId}>{schema.label}</InputLabel>
+      <InputLabel htmlFor={inputId}>
+        {schema.label} ({uuid})
+      </InputLabel>
       <OutlinedInput
         label={schema.label}
         id={inputId}
         aria-describedby={helperTextId}
-        value={value}
+        value={content.value}
         onChange={handleInput}
       />
     </FormControl>
   )
 })
 
-const NumberContentInputView: FunctionComponent<{
-  schema: NumberContentInput
-  value: NumberContent
-  onUpdate: Updater<NumberContent>
-}> = memo((props) => {
-  const { schema, value, onUpdate } = props
-  const inputId = useId()
-  const helperTextId = useId()
-  const handleInput = (_e, value) => {
-    onUpdate(() => value)
-  }
-  return (
-    <FormControl>
-      <FormHelperText id={helperTextId}>{schema.label}</FormHelperText>
-      <CustomNumberInput
-        id={inputId}
-        aria-describedby={helperTextId}
-        value={value}
-        onChange={handleInput}
-      />
-    </FormControl>
-  )
-})
+// const NumberContentInputView: FunctionComponent<{
+//   schema: NumberContentInput
+//   value: NumberContent
+//   onUpdate: Updater<NumberContent>
+// }> = memo((props) => {
+//   const { schema, value, onUpdate } = props
+//   const inputId = useId()
+//   const helperTextId = useId()
+//   const handleInput = (_e, value) => {
+//     onUpdate(() => value)
+//   }
+//   return (
+//     <FormControl>
+//       <FormHelperText id={helperTextId}>{schema.label}</FormHelperText>
+//       <CustomNumberInput
+//         id={inputId}
+//         aria-describedby={helperTextId}
+//         value={value}
+//         onChange={handleInput}
+//       />
+//     </FormControl>
+//   )
+// })
 
 const ObjectContentInputView: FunctionComponent<{
   schema: ObjectContentInput
-  value: ObjectContentInput
-  onUpdate: Updater<ObjectContentInput>
+  uuid: ContentUuid
 }> = memo((props) => {
-  const { schema, value, onUpdate } = props
+  const { schema, uuid } = props
 
-  // Memoize callbacks for each key
-  const handlers = useMemo(() => {
-    return Object.keys(schema.fields).reduce((acc, key) => {
-      acc[key] = (fn: (draft: unknown) => void) => {
-        onUpdate((draft) => {
-          const res = fn(draft[key])
-          if (res !== undefined) {
-            draft[key] = res
-          } else {
-            return
-          }
-        })
-      }
-      return acc
-    }, {})
-  }, [schema.fields, onUpdate])
+  const selectByUuid = useSelectByUuid(uuid)
+  const value = useSelector(selectByUuid)
+
+  if (value === undefined) {
+    return <div>Could not find content by uuid {uuid}</div>
+  }
 
   return (
-    <Stack gap={1} p={2}>
+    <Stack
+      gap={1}
+      p={2}
+    >
       {Object.entries(schema.fields).map(([key, field]) => (
         <ContentInputView
           schema={field}
           key={key}
-          value={value[key]}
-          onUpdate={handlers[key]}
+          uuid={value.value[key].valueUuid}
         />
       ))}
     </Stack>
   )
 })
 
-const ContentInputView: FunctionComponent<{
+export const ContentInputView: FunctionComponent<{
   schema: ContentInput
-  value: ContentInput
-  onUpdate: Updater<any>
+  uuid: ContentUuid
 }> = memo((props) => {
-  const { schema, value, onUpdate } = props
+  const { schema, uuid } = props
   switch (schema.tag) {
     case 'text-input':
       return (
         <TextContentInputView
           schema={schema}
-          value={value}
-          onUpdate={onUpdate}
+          uuid={uuid}
         />
       )
     case 'object-input':
       return (
         <ObjectContentInputView
           schema={schema}
-          value={value}
-          onUpdate={onUpdate}
+          uuid={uuid}
         />
       )
     case 'number-input':
-      return (
-        <NumberContentInputView
-          schema={schema}
-          value={value}
-          onUpdate={onUpdate}
-        />
-      )
+      return 'todo'
+    // return (
+    //   <NumberContentInputView
+    //     schema={schema}
+    //   uuid={uuid}
+    //   />
+    // )
   }
 })
 
-const textSchema = textInput({
-  label: 'Title',
-})
-
-const objectSchema = objectInput({
-  fields: {
-    title: textInput({
-      label: 'Title',
-    }),
-    description: textInput({
-      label: 'Description',
-    }),
-    paddingTop: numberInput({
-      label: 'Padding Top',
-    }),
-    body: objectInput({
-      fields: {
-        title: textInput({
-          label: 'Title',
-        }),
-        description: textInput({
-          label: 'Description',
-        }),
-      },
-    }),
-  },
-})
-
-export const Editor: FunctionComponent = () => {
-  const [textState, setTextState] = useState<TextContent>('Default text')
-  const handleTextStateUpdate: Updater<TextContent> = useCallback((fn) => {
-    setTextState(produce(fn))
-  }, [])
-
-  const [objectState, setObjectState] = useState<any>({
-    title: 'Title',
-    description: 'Description',
-    paddingTop: 10,
-    body: {
-      title: 'Title',
-      description: 'Description',
-    },
-  })
-  const handleObjectStateUpdate: Updater<any> = useCallback((fn) => {
-    setObjectState(produce(fn))
-  }, [])
-
-  return (
-    <Stack>
-      <Typography variant="h1">Editor</Typography>
-      <Typography variant="h2">Text</Typography>
-      <JsonView value={textState} />
-      <ContentInputView
-        schema={textSchema}
-        value={textState}
-        onUpdate={handleTextStateUpdate}
-      />
-      <Typography variant="h2">Object</Typography>
-      <JsonView value={objectState} />
-      <ContentInputView
-        schema={objectSchema}
-        value={objectState}
-        onUpdate={handleObjectStateUpdate}
-      />
-    </Stack>
-  )
+export type EditorProps = {
+  store: EditorStore
+  schema: ContentInput
+  rootUuid: ContentUuid
 }
 
-const JsonView: FunctionComponent<{
-  value: unknown
-}> = (props) => {
+export const Editor: FunctionComponent<EditorProps> = (props) => {
+  const { store, schema, rootUuid } = props
   return (
-    <pre>
-      <code>{JSON.stringify(props.value, null, 2)}</code>
-    </pre>
+    <StoreContextProvider store={store}>
+      <ContentInputView
+        schema={schema}
+        uuid={rootUuid}
+      />
+    </StoreContextProvider>
   )
 }
