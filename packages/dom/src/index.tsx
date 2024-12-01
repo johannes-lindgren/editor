@@ -11,6 +11,7 @@ import {
   FunctionComponent,
   memo,
   useCallback,
+  useEffect,
   useId,
   useMemo,
   useState,
@@ -115,7 +116,7 @@ const ObjectContentInputView: FunctionComponent<{
         <ContentInputView
           schema={field}
           key={key}
-          value={value?.[key]}
+          value={value[key]}
           onUpdate={handlers[key]}
         />
       ))}
@@ -157,6 +158,34 @@ const ContentInputView: FunctionComponent<{
   }
 })
 
+const textSchema = textInput({
+  label: 'Title',
+})
+
+const objectSchema = objectInput({
+  fields: {
+    title: textInput({
+      label: 'Title',
+    }),
+    description: textInput({
+      label: 'Description',
+    }),
+    paddingTop: numberInput({
+      label: 'Padding Top',
+    }),
+    body: objectInput({
+      fields: {
+        title: textInput({
+          label: 'Title',
+        }),
+        description: textInput({
+          label: 'Description',
+        }),
+      },
+    }),
+  },
+})
+
 export const Editor: FunctionComponent = () => {
   const [textState, setTextState] = useState<TextContent>('Default text')
   const handleTextStateUpdate: Updater<TextContent> = useCallback((fn) => {
@@ -182,38 +211,14 @@ export const Editor: FunctionComponent = () => {
       <Typography variant="h2">Text</Typography>
       <JsonView value={textState} />
       <ContentInputView
-        schema={textInput({
-          label: 'Title',
-        })}
+        schema={textSchema}
         value={textState}
         onUpdate={handleTextStateUpdate}
       />
       <Typography variant="h2">Object</Typography>
       <JsonView value={objectState} />
       <ContentInputView
-        schema={objectInput({
-          fields: {
-            title: textInput({
-              label: 'Title',
-            }),
-            description: textInput({
-              label: 'Description',
-            }),
-            paddingTop: numberInput({
-              label: 'Padding Top',
-            }),
-            body: objectInput({
-              fields: {
-                title: textInput({
-                  label: 'Title',
-                }),
-                description: textInput({
-                  label: 'Description',
-                }),
-              },
-            }),
-          },
-        })}
+        schema={objectSchema}
         value={objectState}
         onUpdate={handleObjectStateUpdate}
       />
