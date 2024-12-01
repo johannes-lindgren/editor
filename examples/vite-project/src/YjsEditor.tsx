@@ -10,11 +10,13 @@ import {
   ContentStore,
   ContentUuid,
   Content,
+  ContentReference,
 } from '@editor/model'
 import { createBinder } from 'react-immer-yjs'
 import * as Y from 'yjs'
 import { FunctionComponent } from 'react'
 import { Box, Stack } from '@mui/material'
+import { v4 as randomUuid } from 'uuid'
 
 const textSchema = textInput({
   label: 'Title',
@@ -44,34 +46,55 @@ const objectSchema = objectInput({
   },
 })
 
-const defaultContent: Record<ContentUuid, Content> = {
-  '0': {
-    tag: 'object',
-    uuid: '0',
-    value: {
-      title: {
-        tag: 'reference',
-        uuid: '0.0',
-        valueUuid: '1',
-      },
-      description: {
-        tag: 'reference',
-        uuid: '0.1',
-        valueUuid: '2',
-      },
+const contentTree = {
+  tag: 'object',
+  uuid: randomUuid(),
+  value: {
+    title: {
+      tag: 'text',
+      uuid: randomUuid(),
+      value: 'Title',
+    },
+    description: {
+      tag: 'text',
+      uuid: randomUuid(),
+      value: 'Description',
     },
   },
-  '1': {
-    tag: 'text',
-    uuid: '1',
-    value: 'Default title',
-  },
-  '2': {
-    tag: 'text',
-    uuid: '2',
-    value: 'Default description',
-  },
 }
+
+const flattenContent = (content): ContentStore => {
+  const result: Record<ContentUuid, Content> = {}
+
+  switch (content.tag) {
+    case 'text':
+      result[content.uuid] = content
+      break
+    case 'object':
+      result[content.uuid] = {
+        tag: 'object',
+        uuid: content.uuid,
+        value: Object.entries(content.value).reduce(
+          (acc, [key, child]) => {
+            const m = flattenContent(child)
+            Object.assign(result, m)
+            acc[key] = {
+              tag: 'reference',
+              uuid: randomUuid(),
+              valueUuid: child.uuid,
+            }
+            return acc
+          },
+          {} as Record<ContentUuid, ContentReference>,
+        ),
+      }
+      break
+  }
+  return result
+}
+
+const rootUuid = contentTree.uuid
+const defaultContent: ContentStore = flattenContent(contentTree)
 
 const store: EditorStore = createBinder(
   new Y.Doc().getMap('content'),
@@ -84,7 +107,7 @@ export const YjsEditor = () => {
       <Editor
         store={store}
         schema={objectSchema}
-        rootUuid="0"
+        rootUuid={rootUuid}
       />
       <ContentJsonView store={store} />
     </Stack>

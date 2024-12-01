@@ -44,7 +44,7 @@ type UpdateFn<T> = (draft: T) => void
 export type EditorStore = {
   subscribe: (fn: (data: unknown) => void) => () => void
   get: () => ContentStore
-  update: (fn: UpdateFn<unknown>) => void
+  update: (fn: UpdateFn<ContentStore>) => void
 }
 
 const StoreContext = createContext<EditorStore | undefined>(undefined)
@@ -156,8 +156,12 @@ const TextContentInputView: FunctionComponent<{
     //  and the producer callback function might be called later
     const value = e.currentTarget.value
     update((draft) => {
+      const currentContent = draft[uuid]
+      if (!isTextContent(currentContent)) {
+        return
+      }
       draft[uuid] = {
-        ...draft[uuid],
+        ...currentContent,
         value,
       }
     })
