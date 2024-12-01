@@ -2,6 +2,7 @@
  * Text
  */
 import { equalsGuard, isNumber, isString, objectGuard } from 'pure-parse'
+import { v4 as randomUuid } from 'uuid'
 
 export type ContentUuid = string
 export const isContentUuid = isString
@@ -101,3 +102,86 @@ export type ContentInput =
   | NumberContentInput
 
 export type ContentStore = Record<ContentUuid, Content>
+
+/*
+ *  Flatten/Unflatten
+ */
+
+// TODO
+export type ContentTree = unknown
+export type ValueOnlyTree = unknown
+
+export const toStore = (content: ContentTree): ContentStore => {
+  const result: Record<ContentUuid, Content> = {}
+
+  switch (content.tag) {
+    case 'text':
+      result[content.uuid] = content
+      break
+    case 'number':
+      result[content.uuid] = content
+      break
+    case 'object':
+      result[content.uuid] = {
+        tag: 'object',
+        uuid: content.uuid,
+        value: Object.entries(content.value).reduce(
+          (acc, [key, child]) => {
+            const m = toStore(child)
+            Object.assign(result, m)
+            acc[key] = {
+              tag: 'reference',
+              uuid: randomUuid(),
+              valueUuid: child.uuid,
+            }
+            return acc
+          },
+          {} as Record<ContentUuid, ContentReference>,
+        ),
+      }
+      break
+  }
+  return result
+}
+
+export const toTree = (
+  content: ContentStore,
+  rootUuid: ContentUuid,
+): ContentTree => {
+  const root = content[rootUuid]
+  switch (root.tag) {
+    case 'text':
+      return root
+    case 'number':
+      return root
+    case 'object':
+      return {
+        tag: 'object',
+        uuid: root.uuid,
+        value: Object.entries(root.value).reduce(
+          (acc, [key, ref]) => {
+            acc[key] = toTree(content, ref.valueUuid)
+            return acc
+          },
+          {} as Record<string, ContentTree>,
+        ),
+      }
+  }
+}
+
+export const toValueOnlyTree = (content: ContentTree): ValueOnlyTree => {
+  switch (content.tag) {
+    case 'text':
+      return content.value
+    case 'number':
+      return content.value
+    case 'object':
+      return Object.entries(content.value).reduce(
+        (acc, [key, child]) => {
+          acc[key] = toValueOnlyTree(child)
+          return acc
+        },
+        {} as Record<string, ValueOnlyTree>,
+      )
+  }
+}

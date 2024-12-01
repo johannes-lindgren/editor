@@ -12,11 +12,22 @@ import {
   Content,
   ContentReference,
   numberInput,
+  toTree,
+  toStore,
+  toValueOnlyTree,
 } from '@editor/model'
 import { createBinder } from 'react-immer-yjs'
 import * as Y from 'yjs'
 import { FunctionComponent } from 'react'
-import { Box, Stack } from '@mui/material'
+import {
+  Accordion,
+  AccordionDetails,
+  AccordionSummary,
+  Box,
+  Paper,
+  Stack,
+  Typography,
+} from '@mui/material'
 import { v4 as randomUuid } from 'uuid'
 
 const textSchema = textInput({
@@ -46,8 +57,6 @@ const objectSchema = objectInput({
     }),
   },
 })
-
-export type ContentTree = unknown
 
 const contentTree = {
   tag: 'object',
@@ -87,66 +96,8 @@ const contentTree = {
   },
 }
 
-const flattenContent = (content: ContentTree): ContentStore => {
-  const result: Record<ContentUuid, Content> = {}
-
-  switch (content.tag) {
-    case 'text':
-      result[content.uuid] = content
-      break
-    case 'number':
-      result[content.uuid] = content
-      break
-    case 'object':
-      result[content.uuid] = {
-        tag: 'object',
-        uuid: content.uuid,
-        value: Object.entries(content.value).reduce(
-          (acc, [key, child]) => {
-            const m = flattenContent(child)
-            Object.assign(result, m)
-            acc[key] = {
-              tag: 'reference',
-              uuid: randomUuid(),
-              valueUuid: child.uuid,
-            }
-            return acc
-          },
-          {} as Record<ContentUuid, ContentReference>,
-        ),
-      }
-      break
-  }
-  return result
-}
-
-const unflattenContent = (
-  content: ContentStore,
-  rootUuid: ContentUuid,
-): ContentTree => {
-  const root = content[rootUuid]
-  switch (root.tag) {
-    case 'text':
-      return root
-    case 'number':
-      return root
-    case 'object':
-      return {
-        tag: 'object',
-        uuid: root.uuid,
-        value: Object.entries(root.value).reduce(
-          (acc, [key, ref]) => {
-            acc[key] = unflattenContent(content, ref.valueUuid)
-            return acc
-          },
-          {} as Record<string, ContentTree>,
-        ),
-      }
-  }
-}
-
 const rootUuid = contentTree.uuid
-const defaultContent: ContentStore = flattenContent(contentTree)
+const defaultContent: ContentStore = toStore(contentTree)
 
 const store: EditorStore = createBinder(
   new Y.Doc().getMap('content'),
@@ -155,14 +106,34 @@ const store: EditorStore = createBinder(
 
 export const YjsEditor = () => {
   return (
-    <Stack>
-      <Editor
-        store={store}
-        schema={objectSchema}
-        rootUuid={rootUuid}
-      />
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 2,
+      }}
+    >
+      <Paper
+        sx={{
+          borderRadius: 2,
+          p: 2,
+        }}
+      >
+        <Typography
+          variant="h6"
+          component="div"
+        >
+          Editor
+        </Typography>
+        <Editor
+          store={store}
+          schema={objectSchema}
+          rootUuid={rootUuid}
+        />
+      </Paper>
       <ContentJsonView store={store} />
-    </Stack>
+    </Box>
   )
 }
 
@@ -182,16 +153,74 @@ const selectAll = (state: ContentStore) => state
 const ContentJsonViewWithContext = () => {
   const state = useSelector(selectAll)
   return (
+    <Stack>
+      <Accordion>
+        <AccordionSummary>
+          <Typography variant="subtitle1">Source</Typography>
+        </AccordionSummary>
+        <AccordionDetails>
+          <Typography
+            sx={{
+              color: 'text.secondary',
+            }}
+          >
+            The data is stored in a key-value database that maps content UUID
+            to: content
+          </Typography>
+          <JsonView data={state} />
+        </AccordionDetails>
+      </Accordion>
+
+      <Accordion>
+        <AccordionSummary>
+          <Typography variant="subtitle1">Tree</Typography>
+        </AccordionSummary>
+        <AccordionDetails>
+          <Typography
+            sx={{
+              color: 'text.secondary',
+            }}
+          >
+            The data can be transformed into a tree structure, which can be
+            easier to work with:
+          </Typography>
+          <JsonView data={toTree(state, rootUuid)} />
+        </AccordionDetails>
+      </Accordion>
+
+      <Accordion>
+        <AccordionSummary>
+          <Typography variant="subtitle1">Value-only Tree</Typography>
+        </AccordionSummary>
+        <AccordionDetails>
+          <Typography
+            sx={{
+              color: 'text.secondary',
+            }}
+          >
+            The tree-representation can be further simplified by recursively
+            extracting the value:
+          </Typography>
+          <JsonView data={toValueOnlyTree(toTree(state, rootUuid))} />
+        </AccordionDetails>
+      </Accordion>
+    </Stack>
+  )
+}
+
+const JsonView: FunctionComponent<{ data: unknown }> = (props) => {
+  const { data } = props
+  return (
     <Box
       component="pre"
       sx={{
         border: 1,
         borderColor: 'divider',
-        borderRadius: 2,
+        borderRadius: 1,
         p: 2,
       }}
     >
-      <code>{JSON.stringify(unflattenContent(state, rootUuid), null, 2)}</code>
+      <Box component="code">{JSON.stringify(data, null, 2)}</Box>
     </Box>
   )
 }
