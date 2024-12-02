@@ -28,6 +28,7 @@ import {
   isNumberContent,
   ArrayContentInput,
   isArrayContent,
+  isPrimitiveContent,
 } from '@editor/model'
 import { Label, StyledInput, Button, CustomNumberInput } from './components'
 import { v4 as randomUuid } from 'uuid'
@@ -147,6 +148,57 @@ export const ContentNotFoundView: FunctionComponent<{
         Could not find content by uuid {JSON.stringify(uuid)}
       </Typography>
     </Alert>
+  )
+})
+
+export const UnknownKeyView: FunctionComponent<{
+  propertyName: string
+}> = memo((props) => {
+  const { key } = props
+  return (
+    <Alert severity="error">
+      <AlertTitle>Unknown key</AlertTitle>
+      <Typography>
+        The key {JSON.stringify(key)} is not defined in the schema.
+      </Typography>
+    </Alert>
+  )
+})
+
+const PrimitiveContentInputView: FunctionComponent<{
+  schema: TextContentInput
+  uuid: ContentUuid
+}> = memo((props) => {
+  const { schema, uuid } = props
+  const selectByUuid = useSelectByUuid(uuid)
+  const content = useSelector(selectByUuid)
+  const inputId = useId()
+  const helperTextId = useId()
+
+  if (content === undefined) {
+    return <ContentNotFoundView uuid={uuid} />
+  }
+
+  if (!isPrimitiveContent(content)) {
+    return (
+      <UnknownContentView
+        content={content}
+        schema={schema}
+      />
+    )
+  }
+
+  return (
+    <FormControl>
+      <Label htmlFor={inputId}>{schema.label}</Label>
+      <StyledInput
+        disabled
+        label={schema.label}
+        id={inputId}
+        aria-describedby={helperTextId}
+        value={content.value}
+      />
+    </FormControl>
   )
 })
 
@@ -284,13 +336,19 @@ const ObjectContentInputView: FunctionComponent<{
       }}
     >
       <Label>Body</Label>
-      {Object.entries(schema.fields).map(([key, field]) => (
-        <ContentInputView
-          schema={field}
-          key={key}
-          uuid={content.value[key].valueUuid}
-        />
-      ))}
+      {Object.entries(schema.fields).map(([key, field]) => {
+        const childContent = content.value[key]
+        if (!childContent) {
+          return <UnknownKeyView propertyName={key} />
+        }
+        return (
+          <ContentInputView
+            schema={field}
+            key={key}
+            uuid={childContent.valueUuid}
+          />
+        )
+      })}
     </Stack>
   )
 })
@@ -367,6 +425,13 @@ export const ContentInputView: FunctionComponent<{
 }> = memo((props) => {
   const { schema, uuid } = props
   switch (schema.tag) {
+    case 'primitive-input':
+      return (
+        <PrimitiveContentInputView
+          schema={schema}
+          uuid={uuid}
+        />
+      )
     case 'text-input':
       return (
         <TextContentInputView

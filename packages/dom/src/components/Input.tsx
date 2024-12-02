@@ -18,7 +18,11 @@ export const StyledInput = styled(Input)(
     border: 1px solid ${theme.palette.mode === 'dark' ? grey[700] : grey[200]};
     box-shadow: 0 2px 2px ${theme.palette.mode === 'dark' ? grey[900] : grey[50]};
 
-    &:hover {
+    &[disabled] {
+      opacity: 0.5;
+    }
+
+    &:not([disabled]):hover {
       border-color: ${blue[400]};
     }
 

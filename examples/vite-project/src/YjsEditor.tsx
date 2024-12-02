@@ -13,6 +13,8 @@ import {
   toStore,
   toValueOnlyTree,
   arrayInput,
+  oneOfInput,
+  primitiveInput,
 } from '@editor/model'
 import { createBinder } from 'react-immer-yjs'
 import * as Y from 'yjs'
@@ -30,6 +32,9 @@ import { v4 as randomUuid } from 'uuid'
 
 const objectSchema = objectInput({
   fields: {
+    type: primitiveInput({
+      label: 'Type',
+    }),
     title: textInput({
       label: 'Title',
     }),
@@ -61,6 +66,11 @@ const contentTree = {
   tag: 'object',
   uuid: randomUuid(),
   value: {
+    type: {
+      tag: 'primitive',
+      uuid: randomUuid(),
+      value: 'Page',
+    },
     title: {
       tag: 'text',
       uuid: randomUuid(),

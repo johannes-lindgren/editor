@@ -124,16 +124,82 @@ export const arrayInput = (
 })
 
 /*
+ * Primitive
+ */
+
+export type PrimitiveContent = {
+  tag: 'primitive'
+  uuid: ContentUuid
+  value: string
+}
+
+export const isPrimitiveContent = objectGuard<PrimitiveContent>({
+  tag: equalsGuard('primitive'),
+  uuid: isContentUuid,
+  value: isString,
+})
+
+export type PrimitiveContentInput = {
+  tag: 'primitive-input'
+  label?: string
+}
+
+export const primitiveInput = (
+  params?: Omit<PrimitiveContentInput, 'tag'>,
+): PrimitiveContentInput => ({
+  tag: 'primitive-input',
+  ...params,
+})
+
+/*
+ * oneOf
+ */
+
+export type OneOfContent = {
+  tag: 'one-of'
+  uuid: ContentUuid
+  value: ContentReference
+}
+
+export const isOneOfContent = objectGuard<OneOfContent>({
+  tag: equalsGuard('one-of'),
+  uuid: isContentUuid,
+  value: objectGuard({
+    tag: equalsGuard('reference'),
+    uuid: isContentUuid,
+    valueUuid: isContentUuid,
+  }),
+})
+
+export type OneOfContentInput = {
+  tag: 'one-of-input'
+  options: ContentInput[]
+}
+
+export const oneOfInput = (
+  params: Omit<OneOfContentInput, 'tag'>,
+): OneOfContentInput => ({
+  tag: 'one-of-input',
+  ...params,
+})
+
+/*
  * All
  */
 
-export type Content = TextContent | NumberContent | ObjectContent | ArrayContent
+export type Content =
+  | TextContent
+  | NumberContent
+  | ObjectContent
+  | ArrayContent
+  | PrimitiveContent
 
 export type ContentInput =
   | TextContentInput
   | NumberContentInput
   | ObjectContentInput
   | ArrayContentInput
+  | PrimitiveContentInput
 
 export type ContentStore = Record<ContentUuid, Content>
 
@@ -153,6 +219,9 @@ export const toStore = (content: ContentTree): ContentStore => {
       result[content.uuid] = content
       break
     case 'number':
+      result[content.uuid] = content
+      break
+    case 'primitive':
       result[content.uuid] = content
       break
     case 'object':
@@ -206,6 +275,8 @@ export const toTree = (
       return content
     case 'number':
       return content
+    case 'primitive':
+      return content
     case 'object':
       return {
         tag: 'object',
@@ -235,6 +306,8 @@ export const toValueOnlyTree = (content: ContentTree): ValueOnlyTree => {
     case 'text':
       return content.value
     case 'number':
+      return content.value
+    case 'primitive':
       return content.value
     case 'object':
       return Object.entries(content.value).reduce(
