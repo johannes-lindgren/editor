@@ -1,7 +1,13 @@
-/**
+/*
  * Text
  */
-import { equalsGuard, isNumber, isString, objectGuard } from 'pure-parse'
+import {
+  equalsGuard,
+  isArray,
+  isNumber,
+  isString,
+  objectGuard,
+} from 'pure-parse'
 import { v4 as randomUuid } from 'uuid'
 
 export type ContentUuid = string
@@ -31,7 +37,7 @@ export const textInput = (
   ...params,
 })
 
-/**
+/*
  * Number
  */
 
@@ -59,7 +65,7 @@ export const numberInput = (
   ...params,
 })
 
-/**
+/*
  * Reference
  */
 
@@ -69,7 +75,7 @@ export type ContentReference = {
   valueUuid: ContentUuid
 }
 
-/**
+/*
  * Object
  */
 
@@ -90,16 +96,44 @@ export const objectInput = (
   ...params,
 })
 
-/**
+/*
+ * Array
+ */
+
+export type ArrayContent = {
+  tag: 'array'
+  uuid: ContentUuid
+  value: ContentReference[]
+}
+
+export const isArrayContent = objectGuard({
+  tag: equalsGuard('array'),
+  uuid: isContentUuid,
+  value: isArray,
+})
+
+export type ArrayContentInput = {
+  tag: 'array-input'
+  item: ContentInput
+}
+export const arrayInput = (
+  params: Omit<ArrayContentInput, 'tag'>,
+): ArrayContentInput => ({
+  tag: 'array-input',
+  ...params,
+})
+
+/*
  * All
  */
 
-export type Content = TextContent | ObjectContent | NumberContent
+export type Content = TextContent | NumberContent | ObjectContent | ArrayContent
 
 export type ContentInput =
   | TextContentInput
-  | ObjectContentInput
   | NumberContentInput
+  | ObjectContentInput
+  | ArrayContentInput
 
 export type ContentStore = Record<ContentUuid, Content>
 
@@ -127,8 +161,8 @@ export const toStore = (content: ContentTree): ContentStore => {
         uuid: content.uuid,
         value: Object.entries(content.value).reduce(
           (acc, [key, child]) => {
-            const m = toStore(child)
-            Object.assign(result, m)
+            const store = toStore(child)
+            Object.assign(result, store)
             acc[key] = {
               tag: 'reference',
               uuid: randomUuid(),
@@ -140,32 +174,59 @@ export const toStore = (content: ContentTree): ContentStore => {
         ),
       }
       break
+    case 'array':
+      result[content.uuid] = {
+        tag: 'array',
+        uuid: content.uuid,
+        value: content.value.map((child) => {
+          const store = toStore(child)
+          Object.assign(result, store)
+          return {
+            tag: 'reference',
+            uuid: randomUuid(),
+            valueUuid: child.uuid,
+          }
+        }),
+      }
+      break
+    default:
+      // TODO of course, we're not going to keep any exceptions in the final version
+      throw new Error(`Unknown tag ${JSON.stringify(content.tag)}`)
   }
   return result
 }
 
 export const toTree = (
-  content: ContentStore,
+  store: ContentStore,
   rootUuid: ContentUuid,
 ): ContentTree => {
-  const root = content[rootUuid]
-  switch (root.tag) {
+  const content = store[rootUuid]
+  switch (content.tag) {
     case 'text':
-      return root
+      return content
     case 'number':
-      return root
+      return content
     case 'object':
       return {
         tag: 'object',
-        uuid: root.uuid,
-        value: Object.entries(root.value).reduce(
+        uuid: content.uuid,
+        value: Object.entries(content.value).reduce(
           (acc, [key, ref]) => {
-            acc[key] = toTree(content, ref.valueUuid)
+            acc[key] = toTree(store, ref.valueUuid)
             return acc
           },
           {} as Record<string, ContentTree>,
         ),
       }
+    case 'array':
+      return {
+        tag: 'array',
+        uuid: content.uuid,
+        value: content.value.map((ref) => toTree(store, ref.valueUuid)),
+      }
+    default:
+      // TODO of course, we're not going to keep any exceptions in the final version
+      throw new Error('Unknown tag')
   }
 }
 
@@ -183,5 +244,10 @@ export const toValueOnlyTree = (content: ContentTree): ValueOnlyTree => {
         },
         {} as Record<string, ValueOnlyTree>,
       )
+    case 'array':
+      return content.value.map(toValueOnlyTree)
+    default:
+      // TODO of course, we're not going to keep any exceptions in the final version
+      throw new Error('Unknown tag')
   }
 }

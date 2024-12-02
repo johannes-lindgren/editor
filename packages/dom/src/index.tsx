@@ -1,8 +1,6 @@
 import {
   Alert,
   FormControl,
-  InputLabel,
-  OutlinedInput,
   Stack,
   Typography,
   Box,
@@ -16,33 +14,23 @@ import {
   ReactNode,
   useCallback,
   useContext,
-  useEffect,
   useId,
-  useMemo,
-  useRef,
-  useState,
   useSyncExternalStore,
 } from 'react'
 import {
   ContentInput,
-  objectInput,
   ObjectContentInput,
-  textInput,
   TextContentInput,
   NumberContentInput,
-  numberInput,
-  TextContent,
-  NumberContent,
   ContentUuid,
   ContentStore,
-  Content,
   isTextContent,
   isNumberContent,
+  ArrayContentInput,
+  isArrayContent,
 } from '@editor/model'
-import { NumberInput } from '@mui/base/Unstable_NumberInput/NumberInput'
-import { CustomNumberInput } from './components/CustomNumberInput.tsx'
-import { Label } from './components/Label.tsx'
-import { StyledInput } from './components/Input.tsx'
+import { Label, StyledInput, Button, CustomNumberInput } from './components'
+import { v4 as randomUuid } from 'uuid'
 
 type UpdateFn<T> = (draft: T) => void
 
@@ -125,6 +113,24 @@ export const UnknownContentView: FunctionComponent<{
         <JsonView data={schema} />
         <Typography variant="subtitle1">Content:</Typography>
         <JsonView data={content} />
+      </Stack>
+    </Alert>
+  )
+})
+
+export const UnknownInputView: FunctionComponent<{
+  schema: ContentInput
+}> = memo((props) => {
+  const { schema } = props
+  return (
+    <Alert severity="error">
+      <AlertTitle>Unknown input type</AlertTitle>
+      <Typography>
+        Cannot render the input because the input type is unknown.
+      </Typography>
+      <Stack>
+        <Typography variant="subtitle1">Schema:</Typography>
+        <JsonView data={schema} />
       </Stack>
     </Alert>
   )
@@ -261,24 +267,96 @@ const ObjectContentInputView: FunctionComponent<{
   const { schema, uuid } = props
 
   const selectByUuid = useSelectByUuid(uuid)
-  const value = useSelector(selectByUuid)
+  const content = useSelector(selectByUuid)
 
-  if (value === undefined) {
+  if (content === undefined) {
     return <ContentNotFoundView uuid={uuid} />
   }
 
   return (
     <Stack
-      gap={1}
-      p={2}
+      sx={{
+        gap: 2,
+        p: 2,
+        border: 1,
+        borderColor: 'divider',
+        borderRadius: 1,
+      }}
     >
+      <Label>Body</Label>
       {Object.entries(schema.fields).map(([key, field]) => (
         <ContentInputView
           schema={field}
           key={key}
-          uuid={value.value[key].valueUuid}
+          uuid={content.value[key].valueUuid}
         />
       ))}
+    </Stack>
+  )
+})
+
+const ArrayContentInputView: FunctionComponent<{
+  schema: ArrayContentInput
+  uuid: ContentUuid
+}> = memo((props) => {
+  const { schema, uuid } = props
+
+  const update = useUpdater()
+  const selectByUuid = useSelectByUuid(uuid)
+  const content = useSelector(selectByUuid)
+
+  if (content === undefined) {
+    return <ContentNotFoundView uuid={uuid} />
+  }
+
+  if (!isArrayContent(content)) {
+    return (
+      <UnknownContentView
+        schema={schema}
+        content={content}
+      />
+    )
+  }
+
+  const handleClickAdd = useCallback(() => {
+    update((draft) => {
+      const currentContent = draft[uuid]
+      if (!isArrayContent(currentContent)) {
+        return
+      }
+      console.log('Adding new item')
+      const newContent = {
+        tag: 'text',
+        uuid: randomUuid(),
+        value: 'New item',
+      }
+      draft[newContent.uuid] = newContent
+      currentContent.value.push({
+        tag: 'reference',
+        uuid: randomUuid(),
+        valueUuid: newContent.uuid,
+      })
+    })
+  }, [])
+
+  return (
+    <Stack
+      sx={{
+        gap: 2,
+        p: 2,
+        border: 1,
+        borderColor: 'divider',
+        borderRadius: 1,
+      }}
+    >
+      {content.value.map((childContent, index) => (
+        <ContentInputView
+          key={index}
+          schema={schema.item}
+          uuid={childContent.valueUuid}
+        />
+      ))}
+      <Button onClick={handleClickAdd}>Add</Button>
     </Stack>
   )
 })
@@ -310,6 +388,15 @@ export const ContentInputView: FunctionComponent<{
           uuid={uuid}
         />
       )
+    case 'array-input':
+      return (
+        <ArrayContentInputView
+          schema={schema}
+          uuid={uuid}
+        />
+      )
+    default:
+      return <UnknownInputView schema={schema} />
   }
 })
 

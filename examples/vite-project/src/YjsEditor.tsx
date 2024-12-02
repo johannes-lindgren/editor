@@ -8,13 +8,11 @@ import {
   objectInput,
   textInput,
   ContentStore,
-  ContentUuid,
-  Content,
-  ContentReference,
   numberInput,
   toTree,
   toStore,
   toValueOnlyTree,
+  arrayInput,
 } from '@editor/model'
 import { createBinder } from 'react-immer-yjs'
 import * as Y from 'yjs'
@@ -29,10 +27,6 @@ import {
   Typography,
 } from '@mui/material'
 import { v4 as randomUuid } from 'uuid'
-
-const textSchema = textInput({
-  label: 'Title',
-})
 
 const objectSchema = objectInput({
   fields: {
@@ -54,6 +48,11 @@ const objectSchema = objectInput({
           label: 'Description',
         }),
       },
+    }),
+    body2: arrayInput({
+      item: textInput({
+        label: 'Item',
+      }),
     }),
   },
 })
@@ -92,6 +91,22 @@ const contentTree = {
           value: 'Description',
         },
       },
+    },
+    body2: {
+      tag: 'array',
+      uuid: randomUuid(),
+      value: [
+        {
+          tag: 'text',
+          uuid: randomUuid(),
+          value: 'Item 1',
+        },
+        {
+          tag: 'text',
+          uuid: randomUuid(),
+          value: 'Item 2',
+        },
+      ],
     },
   },
 }
