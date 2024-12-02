@@ -10,12 +10,12 @@ import {
 } from 'pure-parse'
 import { v4 as randomUuid } from 'uuid'
 
-export type ContentUuid = string
+export type Uuid = string
 export const isContentUuid = isString
 
 export type TextContent = {
   tag: 'text'
-  uuid: ContentUuid
+  uuid: Uuid
   value: string
 }
 
@@ -43,7 +43,7 @@ export const textInput = (
 
 export type NumberContent = {
   tag: 'number'
-  uuid: ContentUuid
+  uuid: Uuid
   value: number
 }
 
@@ -71,8 +71,14 @@ export const numberInput = (
 
 export type ContentReference = {
   tag: 'reference'
-  uuid: ContentUuid
-  valueUuid: ContentUuid
+  uuid: Uuid
+  valueUuid: Uuid
+}
+
+export type ContentInputReference = {
+  tag: 'reference-input'
+  uuid: Uuid
+  inputUuid: Uuid
 }
 
 /*
@@ -81,7 +87,7 @@ export type ContentReference = {
 
 export type ObjectContent = {
   tag: 'object'
-  uuid: ContentUuid
+  uuid: Uuid
   value: Record<string, ContentReference>
 }
 export type ObjectContentInput = {
@@ -102,7 +108,7 @@ export const objectInput = (
 
 export type ArrayContent = {
   tag: 'array'
-  uuid: ContentUuid
+  uuid: Uuid
   value: ContentReference[]
 }
 
@@ -114,7 +120,7 @@ export const isArrayContent = objectGuard({
 
 export type ArrayContentInput = {
   tag: 'array-input'
-  item: ContentInput
+  items: Content[]
 }
 export const arrayInput = (
   params: Omit<ArrayContentInput, 'tag'>,
@@ -129,7 +135,7 @@ export const arrayInput = (
 
 export type PrimitiveContent = {
   tag: 'primitive'
-  uuid: ContentUuid
+  uuid: Uuid
   value: string
 }
 
@@ -142,10 +148,11 @@ export const isPrimitiveContent = objectGuard<PrimitiveContent>({
 export type PrimitiveContentInput = {
   tag: 'primitive-input'
   label?: string
+  value: string
 }
 
 export const primitiveInput = (
-  params?: Omit<PrimitiveContentInput, 'tag'>,
+  params: Omit<PrimitiveContentInput, 'tag'>,
 ): PrimitiveContentInput => ({
   tag: 'primitive-input',
   ...params,
@@ -157,7 +164,7 @@ export const primitiveInput = (
 
 export type OneOfContent = {
   tag: 'one-of'
-  uuid: ContentUuid
+  uuid: Uuid
   value: ContentReference
 }
 
@@ -173,6 +180,7 @@ export const isOneOfContent = objectGuard<OneOfContent>({
 
 export type OneOfContentInput = {
   tag: 'one-of-input'
+  label?: string
   options: ContentInput[]
 }
 
@@ -193,6 +201,7 @@ export type Content =
   | ObjectContent
   | ArrayContent
   | PrimitiveContent
+  | OneOfContent
 
 export type ContentInput =
   | TextContentInput
@@ -200,8 +209,10 @@ export type ContentInput =
   | ObjectContentInput
   | ArrayContentInput
   | PrimitiveContentInput
+  | OneOfContentInput
+  | ContentInputReference
 
-export type ContentStore = Record<ContentUuid, Content>
+export type ContentStore = Record<Uuid, Content>
 
 /*
  *  Flatten/Unflatten
@@ -211,8 +222,12 @@ export type ContentStore = Record<ContentUuid, Content>
 export type ContentTree = unknown
 export type ValueOnlyTree = unknown
 
+/**
+ * Not meant to be used normally, but useful in tests
+ * @param content
+ */
 export const toStore = (content: ContentTree): ContentStore => {
-  const result: Record<ContentUuid, Content> = {}
+  const result: Record<Uuid, Content> = {}
 
   switch (content.tag) {
     case 'text':
@@ -223,6 +238,20 @@ export const toStore = (content: ContentTree): ContentStore => {
       break
     case 'primitive':
       result[content.uuid] = content
+      break
+    case 'one-of':
+      const child = content.value
+      const store = toStore(child)
+      Object.assign(result, store)
+      result[content.uuid] = {
+        tag: 'one-of',
+        uuid: content.uuid,
+        value: {
+          tag: 'reference',
+          uuid: randomUuid(),
+          valueUuid: child.uuid,
+        },
+      }
       break
     case 'object':
       result[content.uuid] = {
@@ -239,7 +268,7 @@ export const toStore = (content: ContentTree): ContentStore => {
             }
             return acc
           },
-          {} as Record<ContentUuid, ContentReference>,
+          {} as Record<Uuid, ContentReference>,
         ),
       }
       break
@@ -265,10 +294,7 @@ export const toStore = (content: ContentTree): ContentStore => {
   return result
 }
 
-export const toTree = (
-  store: ContentStore,
-  rootUuid: ContentUuid,
-): ContentTree => {
+export const toTree = (store: ContentStore, rootUuid: Uuid): ContentTree => {
   const content = store[rootUuid]
   switch (content.tag) {
     case 'text':
@@ -277,6 +303,8 @@ export const toTree = (
       return content
     case 'primitive':
       return content
+    case 'one-of':
+      return toTree(store, content.value.valueUuid)
     case 'object':
       return {
         tag: 'object',

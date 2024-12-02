@@ -12,7 +12,8 @@
     "@mui/system": "^6.1.9",
     "immer": "^10.1.1",
     "clsx": "^2.1.1",
-    "uuid": "^11.0.3"
+    "uuid": "^11.0.3",
+    "@mui/icons-material": "^6.1.9"
   },
   "devDependencies": {
     "@types/react": "^18.3.12",

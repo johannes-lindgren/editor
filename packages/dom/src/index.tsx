@@ -22,16 +22,33 @@ import {
   ObjectContentInput,
   TextContentInput,
   NumberContentInput,
-  ContentUuid,
+  Uuid,
   ContentStore,
   isTextContent,
   isNumberContent,
   ArrayContentInput,
   isArrayContent,
   isPrimitiveContent,
+  isOneOfContent,
+  OneOfContentInput,
+  PrimitiveContentInput,
+  Content,
+  textInput,
+  numberInput,
+  primitiveInput,
+  objectInput,
+  arrayInput,
 } from '@editor/model'
-import { Label, StyledInput, Button, CustomNumberInput } from './components'
+import {
+  Label,
+  StyledInput,
+  Button,
+  CustomNumberInput,
+  Select,
+  Option,
+} from './components'
 import { v4 as randomUuid } from 'uuid'
+import * as React from 'react'
 
 type UpdateFn<T> = (draft: T) => void
 
@@ -69,13 +86,18 @@ export const useSelector = <Selection,>(
   return useSyncExternalStore(store.subscribe, getSnapshot)
 }
 
-const useSelectByUuid = (uuid: ContentUuid) => {
+const useSelectByUuid = (uuid: Uuid) => {
   return useCallback(
     (store: ContentStore) => {
       return store[uuid]
     },
     [uuid],
   )
+}
+
+const useContentByUuid = (uuid: Uuid) => {
+  const selectByUuid = useSelectByUuid(uuid)
+  return useSelector(selectByUuid)
 }
 
 const JsonView: FunctionComponent<{ data: unknown }> = (props) => {
@@ -138,7 +160,7 @@ export const UnknownInputView: FunctionComponent<{
 })
 
 export const ContentNotFoundView: FunctionComponent<{
-  uuid: ContentUuid
+  uuid: Uuid
 }> = memo((props) => {
   const { uuid } = props
   return (
@@ -151,23 +173,23 @@ export const ContentNotFoundView: FunctionComponent<{
   )
 })
 
-export const UnknownKeyView: FunctionComponent<{
+export const MissingPropertyView: FunctionComponent<{
   propertyName: string
 }> = memo((props) => {
-  const { key } = props
+  const { propertyName } = props
   return (
     <Alert severity="error">
-      <AlertTitle>Unknown key</AlertTitle>
+      <AlertTitle>Missing property</AlertTitle>
       <Typography>
-        The key {JSON.stringify(key)} is not defined in the schema.
+        The property {propertyName} is missing from the object.
       </Typography>
     </Alert>
   )
 })
 
 const PrimitiveContentInputView: FunctionComponent<{
-  schema: TextContentInput
-  uuid: ContentUuid
+  schema: PrimitiveContentInput
+  uuid: Uuid
 }> = memo((props) => {
   const { schema, uuid } = props
   const selectByUuid = useSelectByUuid(uuid)
@@ -190,7 +212,7 @@ const PrimitiveContentInputView: FunctionComponent<{
 
   return (
     <FormControl>
-      <Label htmlFor={inputId}>{schema.label}</Label>
+      {schema.label && <Label>{schema.label}</Label>}
       <StyledInput
         disabled
         label={schema.label}
@@ -204,7 +226,7 @@ const PrimitiveContentInputView: FunctionComponent<{
 
 const TextContentInputView: FunctionComponent<{
   schema: TextContentInput
-  uuid: ContentUuid
+  uuid: Uuid
 }> = memo((props) => {
   const { schema, uuid } = props
   const selectByUuid = useSelectByUuid(uuid)
@@ -245,7 +267,7 @@ const TextContentInputView: FunctionComponent<{
 
   return (
     <FormControl>
-      <Label htmlFor={inputId}>{schema.label}</Label>
+      {schema.label && <Label>{schema.label}</Label>}
       <StyledInput
         label={schema.label}
         id={inputId}
@@ -259,7 +281,7 @@ const TextContentInputView: FunctionComponent<{
 
 const NumberContentInputView: FunctionComponent<{
   schema: NumberContentInput
-  uuid: ContentUuid
+  uuid: Uuid
 }> = memo((props) => {
   const { schema, uuid } = props
   const selectByUuid = useSelectByUuid(uuid)
@@ -300,9 +322,8 @@ const NumberContentInputView: FunctionComponent<{
 
   return (
     <FormControl>
-      <Label htmlFor={inputId}>{schema.label}</Label>
+      {schema.label && <Label>{schema.label}</Label>}
       <CustomNumberInput
-        label={schema.label}
         id={inputId}
         aria-describedby={helperTextId}
         value={content.value}
@@ -312,9 +333,63 @@ const NumberContentInputView: FunctionComponent<{
   )
 })
 
+// const OneOfInputView: FunctionComponent<{
+//   schema: OneOfContentInput
+//   uuid: ContentUuid
+// }> = memo((props) => {
+//   const { schema, uuid } = props
+//   const selectByUuid = useSelectByUuid(uuid)
+//   const content = useSelector(selectByUuid)
+//   const inputId = useId()
+//   const helperTextId = useId()
+//   const update = useUpdater()
+//   const handleInput: FormEventHandler<
+//     HTMLInputElement | HTMLTextAreaElement
+//   > = (e) => {
+//     // // Must save in a variable because e will become destroyed after the event handler finishes,
+//     // //  and the producer callback function might be called later
+//     // const value = e.currentTarget.value
+//     // update((draft) => {
+//     //   const currentContent = draft[uuid]
+//     //   if (!isOneOfContent(currentContent)) {
+//     //     return
+//     //   }
+//     //   draft[uuid] = {
+//     //     ...currentContent,
+//     //     value,
+//     //   }
+//     // })
+//   }
+//
+//   if (content === undefined) {
+//     return <ContentNotFoundView uuid={uuid} />
+//   }
+//
+//   if (!isOneOfContent(content)) {
+//     return (
+//       <UnknownContentView
+//         content={content}
+//         schema={schema}
+//       />
+//     )
+//   }
+//
+//   return (
+//     <FormControl>
+//       {schema.label && <Label>{schema.label}</Label>}
+//       <Select defaultValue={10}>
+//         <Option value={10}>Documentation</Option>
+//         {schema.options.map((option) => (
+//           <Option>{option.label}</Option>
+//         ))}
+//       </Select>
+//     </FormControl>
+//   )
+// })
+
 const ObjectContentInputView: FunctionComponent<{
   schema: ObjectContentInput
-  uuid: ContentUuid
+  uuid: Uuid
 }> = memo((props) => {
   const { schema, uuid } = props
 
@@ -339,7 +414,7 @@ const ObjectContentInputView: FunctionComponent<{
       {Object.entries(schema.fields).map(([key, field]) => {
         const childContent = content.value[key]
         if (!childContent) {
-          return <UnknownKeyView propertyName={key} />
+          return <MissingPropertyView propertyName={key} />
         }
         return (
           <ContentInputView
@@ -355,7 +430,7 @@ const ObjectContentInputView: FunctionComponent<{
 
 const ArrayContentInputView: FunctionComponent<{
   schema: ArrayContentInput
-  uuid: ContentUuid
+  uuid: Uuid
 }> = memo((props) => {
   const { schema, uuid } = props
 
@@ -389,6 +464,7 @@ const ArrayContentInputView: FunctionComponent<{
         value: 'New item',
       }
       draft[newContent.uuid] = newContent
+      console.log('items', schema.items)
       currentContent.value.push({
         tag: 'reference',
         uuid: randomUuid(),
@@ -407,10 +483,9 @@ const ArrayContentInputView: FunctionComponent<{
         borderRadius: 1,
       }}
     >
-      {content.value.map((childContent, index) => (
-        <ContentInputView
-          key={index}
-          schema={schema.item}
+      {content.value.map((childContent) => (
+        <ContentInputViewReferencedSchema
+          key={childContent.uuid}
           uuid={childContent.valueUuid}
         />
       ))}
@@ -419,9 +494,45 @@ const ArrayContentInputView: FunctionComponent<{
   )
 })
 
+const ContentInputViewReferencedSchema: FunctionComponent<{
+  uuid: Uuid
+}> = memo((props) => {
+  const { uuid } = props
+  const content = useContentByUuid(uuid)
+  if (content === undefined) {
+    return <ContentNotFoundView uuid={uuid} />
+  }
+  return (
+    <ContentInputView
+      schema={inputFromContent(content)}
+      uuid={content.uuid}
+    />
+  )
+})
+
+/**
+ * TODO remove... probably. The thing is that we don't want to have to fall back to some defaults
+ * The input is not a function of the content, nor does it define what the default content should be.
+ * @param content
+ */
+const inputFromContent = (content: Content): ContentInput => {
+  switch (content.tag) {
+    case 'text':
+      return textInput()
+    case 'number':
+      return numberInput()
+    case 'primitive':
+      return primitiveInput()
+    case 'object':
+      return objectInput()
+    case 'array':
+      return arrayInput()
+  }
+}
+
 export const ContentInputView: FunctionComponent<{
   schema: ContentInput
-  uuid: ContentUuid
+  uuid: Uuid
 }> = memo((props) => {
   const { schema, uuid } = props
   switch (schema.tag) {
@@ -439,6 +550,13 @@ export const ContentInputView: FunctionComponent<{
           uuid={uuid}
         />
       )
+    case 'one-of-input':
+      // TODO
+      return 'TODO: oneOf'
+    // <OneOfInputView
+    //   schema={schema}
+    //   uuid={uuid}
+    // />
     case 'object-input':
       return (
         <ObjectContentInputView
@@ -455,6 +573,7 @@ export const ContentInputView: FunctionComponent<{
       )
     case 'array-input':
       return (
+        // TODO
         <ArrayContentInputView
           schema={schema}
           uuid={uuid}
@@ -468,7 +587,7 @@ export const ContentInputView: FunctionComponent<{
 export type EditorProps = {
   store: EditorStore
   schema: ContentInput
-  rootUuid: ContentUuid
+  rootUuid: Uuid
 }
 
 export const Editor: FunctionComponent<EditorProps> = (props) => {

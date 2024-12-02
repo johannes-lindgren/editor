@@ -30,10 +30,35 @@ import {
 } from '@mui/material'
 import { v4 as randomUuid } from 'uuid'
 
+// const contentTemplates: ContentStore = toStore({
+//   tag: 'text',
+//   uuid: randomUuid(),
+//   value: 'this is from a template',
+// })
+
+// const defaultTextInput = textInput({
+//   label: 'Some text'
+// })
+// const inputs = [defaultTextInput]
+
 const objectSchema = objectInput({
   fields: {
     type: primitiveInput({
       label: 'Type',
+      value: 'page',
+    }),
+    align: oneOfInput({
+      label: 'Alignment',
+      options: [
+        primitiveInput({
+          label: 'Left',
+          value: 'left',
+        }),
+        primitiveInput({
+          label: 'Center',
+          value: 'center',
+        }),
+      ],
     }),
     title: textInput({
       label: 'Title',
@@ -55,9 +80,13 @@ const objectSchema = objectInput({
       },
     }),
     body2: arrayInput({
-      item: textInput({
-        label: 'Item',
-      }),
+      items: [
+        {
+          tag: 'text',
+          uuid: randomUuid(),
+          value: 'this is from a template',
+        },
+      ],
     }),
   },
 })
@@ -70,6 +99,15 @@ const contentTree = {
       tag: 'primitive',
       uuid: randomUuid(),
       value: 'Page',
+    },
+    align: {
+      tag: 'one-of',
+      uuid: randomUuid(),
+      value: {
+        tag: 'primitive',
+        uuid: randomUuid(),
+        value: 'left',
+      },
     },
     title: {
       tag: 'text',
@@ -115,6 +153,11 @@ const contentTree = {
           tag: 'text',
           uuid: randomUuid(),
           value: 'Item 2',
+        },
+        {
+          tag: 'number',
+          uuid: randomUuid(),
+          value: 100,
         },
       ],
     },
