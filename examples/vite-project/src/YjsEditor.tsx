@@ -86,6 +86,16 @@ const objectSchema = objectInput({
           uuid: randomUuid(),
           value: 'this is from a template',
         },
+        {
+          tag: 'text',
+          uuid: randomUuid(),
+          value: 'this is also from a template',
+        },
+        {
+          tag: 'number',
+          uuid: randomUuid(),
+          value: 0,
+        },
       ],
     }),
   },

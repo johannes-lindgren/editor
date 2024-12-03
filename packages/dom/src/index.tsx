@@ -29,8 +29,6 @@ import {
   ArrayContentInput,
   isArrayContent,
   isPrimitiveContent,
-  isOneOfContent,
-  OneOfContentInput,
   PrimitiveContentInput,
   Content,
   textInput,
@@ -38,17 +36,22 @@ import {
   primitiveInput,
   objectInput,
   arrayInput,
+  subStore,
+  cloneContent,
 } from '@editor/model'
 import {
   Label,
   StyledInput,
-  Button,
   CustomNumberInput,
-  Select,
-  Option,
+  AnimatedListbox,
+  MenuButton,
+  MenuItem,
 } from './components'
 import { v4 as randomUuid } from 'uuid'
 import * as React from 'react'
+import { createSelector } from 'reselect'
+import { Dropdown } from '@mui/base/Dropdown'
+import { Menu } from '@mui/base/Menu'
 
 type UpdateFn<T> = (draft: T) => void
 
@@ -428,6 +431,14 @@ const ObjectContentInputView: FunctionComponent<{
   )
 })
 
+const selectStore = (store: ContentStore) => store
+const selectUuid = (_: ContentStore, uuid: Uuid) => uuid
+
+const selectContentStoreByUuid = createSelector(
+  [selectStore, selectUuid],
+  (store: ContentStore, uuid: Uuid) => subStore(store, uuid),
+)
+
 const ArrayContentInputView: FunctionComponent<{
   schema: ArrayContentInput
   uuid: Uuid
@@ -435,8 +446,8 @@ const ArrayContentInputView: FunctionComponent<{
   const { schema, uuid } = props
 
   const update = useUpdater()
-  const selectByUuid = useSelectByUuid(uuid)
-  const content = useSelector(selectByUuid)
+  const content = useContentByUuid(uuid)
+  // const subs = useSelector((store) => selectContentStoreByUuid(store, uuid))
 
   if (content === undefined) {
     return <ContentNotFoundView uuid={uuid} />
@@ -451,28 +462,31 @@ const ArrayContentInputView: FunctionComponent<{
     )
   }
 
-  const handleClickAdd = useCallback(() => {
-    update((draft) => {
-      const currentContent = draft[uuid]
-      if (!isArrayContent(currentContent)) {
-        return
-      }
-      console.log('Adding new item')
-      const newContent = {
-        tag: 'text',
-        uuid: randomUuid(),
-        value: 'New item',
-      }
-      draft[newContent.uuid] = newContent
-      console.log('items', schema.items)
-      currentContent.value.push({
-        tag: 'reference',
-        uuid: randomUuid(),
-        valueUuid: newContent.uuid,
-      })
-    })
-  }, [])
+  const createHandleMenuClick = (newContent: Content) => {
+    return () => {
+      update((draft) => {
+        const currentContent = draft[uuid]
+        if (!isArrayContent(currentContent)) {
+          return
+        }
+        if (!newContent) {
+          return
+        }
+        const tmpStore: ContentStore = {
+          [newContent.uuid]: newContent,
+        }
+        const clonedStore = cloneContent(tmpStore)
 
+        Object.assign(draft, clonedStore)
+        currentContent.value.push({
+          tag: 'reference',
+          uuid: randomUuid(),
+          // TODO!!!!! We need the root!
+          valueUuid: Object.keys(clonedStore)[0],
+        })
+      })
+    }
+  }
   return (
     <Stack
       sx={{
@@ -489,7 +503,19 @@ const ArrayContentInputView: FunctionComponent<{
           uuid={childContent.valueUuid}
         />
       ))}
-      <Button onClick={handleClickAdd}>Add</Button>
+      <Dropdown>
+        <MenuButton>Add</MenuButton>
+        <Menu slots={{ listbox: AnimatedListbox }}>
+          {schema.items.map((item) => (
+            <MenuItem
+              key={item.uuid}
+              onClick={createHandleMenuClick(item)}
+            >
+              {item.tag}
+            </MenuItem>
+          ))}
+        </Menu>
+      </Dropdown>
     </Stack>
   )
 })

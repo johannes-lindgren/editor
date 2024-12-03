@@ -222,6 +222,35 @@ export type ContentStore = Record<Uuid, Content>
 export type ContentTree = unknown
 export type ValueOnlyTree = unknown
 
+export const subStore = (store: ContentStore, uuid: Uuid): ContentStore => {
+  const content = store[uuid]
+  if (content === undefined) {
+    return {}
+  }
+  switch (content.tag) {
+    case 'text':
+      return { [uuid]: content }
+    case 'number':
+      return { [uuid]: content }
+    case 'primitive':
+      return { [uuid]: content }
+    case 'one-of':
+      return subStore(store, content.value.valueUuid)
+    case 'object':
+      return Object.entries(content.value).reduce((acc, [_key, ref]) => {
+        Object.assign(acc, subStore(store, ref.valueUuid))
+        return acc
+      }, {} as ContentStore)
+    case 'array':
+      return content.value.reduce((acc, ref) => {
+        return { ...acc, ...subStore(store, ref.valueUuid) }
+      }, {} as ContentStore)
+    default:
+      // TODO of course, we're not going to keep any exceptions in the final version
+      throw new Error('Unknown tag')
+  }
+}
+
 /**
  * Not meant to be used normally, but useful in tests
  * @param content
@@ -351,4 +380,87 @@ export const toValueOnlyTree = (content: ContentTree): ValueOnlyTree => {
       // TODO of course, we're not going to keep any exceptions in the final version
       throw new Error('Unknown tag')
   }
+}
+
+export const cloneContent = (content: ContentStore): ContentStore => {
+  const newUuidFromOld = uuidMapping(content)
+  const result: Record<Uuid, Content> = {}
+  for (const [oldUuid, newUuid] of newUuidFromOld) {
+    const oldContent = content[oldUuid]
+    if (oldContent === undefined) {
+      throw new Error('Undefined content')
+    }
+    switch (oldContent.tag) {
+      case 'text':
+        result[newUuid] = {
+          ...oldContent,
+          uuid: newUuid,
+        }
+        break
+      case 'number':
+        result[newUuid] = {
+          ...oldContent,
+          uuid: newUuid,
+        }
+        break
+      case 'primitive':
+        result[newUuid] = {
+          ...oldContent,
+          uuid: newUuid,
+        }
+        break
+      case 'one-of':
+        result[newUuid] = {
+          ...oldContent,
+          uuid: newUuid,
+          value: {
+            tag: 'reference',
+            uuid: randomUuid(),
+            valueUuid: newUuidFromOld.get(oldContent.value.valueUuid),
+          },
+        }
+        break
+      case 'object':
+        result[newUuid] = {
+          tag: 'object',
+          uuid: newUuid,
+          value: Object.entries(oldContent.value).reduce(
+            (acc, [key, child]) => {
+              acc[key] = {
+                tag: 'reference',
+                uuid: randomUuid(),
+                valueUuid: newUuidFromOld.get(child.valueUuid),
+              }
+              return acc
+            },
+            {} as Record<string, ContentReference>,
+          ),
+        }
+        break
+      case 'array':
+        result[newUuid] = {
+          tag: 'array',
+          uuid: newUuid,
+          value: oldContent.value.map((child) => ({
+            tag: 'reference',
+            uuid: randomUuid(),
+            valueUuid: newUuidFromOld.get(child.valueUuid),
+          })),
+        }
+        break
+      default:
+        // TODO of course, we're not going to keep any exceptions in the final version
+        throw new Error('Unknown tag')
+    }
+  }
+  return result
+}
+
+const uuidMapping = (content: ContentStore): Map<Uuid, Uuid> => {
+  const result = new Map<Uuid, Uuid>()
+  const oldUuids = Object.keys(content)
+  for (const oldUuid of oldUuids) {
+    result.set(oldUuid, randomUuid())
+  }
+  return result
 }

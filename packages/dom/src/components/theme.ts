@@ -1,4 +1,5 @@
 export const blue = {
+  50: '#F0F7FF',
   100: '#DAECFF',
   200: '#b6daff',
   300: '#66B2FF',
