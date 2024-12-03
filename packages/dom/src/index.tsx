@@ -23,7 +23,6 @@ import {
   TextContentInput,
   NumberContentInput,
   Uuid,
-  ContentStore,
   isTextContent,
   isNumberContent,
   ArrayContentInput,
@@ -38,6 +37,7 @@ import {
   arrayInput,
   subStore,
   cloneContent,
+  ContentStore,
 } from '@editor/model'
 import {
   Label,
@@ -92,7 +92,7 @@ export const useSelector = <Selection,>(
 const useSelectByUuid = (uuid: Uuid) => {
   return useCallback(
     (store: ContentStore) => {
-      return store[uuid]
+      return store.data[uuid]
     },
     [uuid],
   )
@@ -195,8 +195,7 @@ const PrimitiveContentInputView: FunctionComponent<{
   uuid: Uuid
 }> = memo((props) => {
   const { schema, uuid } = props
-  const selectByUuid = useSelectByUuid(uuid)
-  const content = useSelector(selectByUuid)
+  const content = useContentByUuid(uuid)
   const inputId = useId()
   const helperTextId = useId()
 
@@ -232,8 +231,7 @@ const TextContentInputView: FunctionComponent<{
   uuid: Uuid
 }> = memo((props) => {
   const { schema, uuid } = props
-  const selectByUuid = useSelectByUuid(uuid)
-  const content = useSelector(selectByUuid)
+  const content = useContentByUuid(uuid)
   const inputId = useId()
   const helperTextId = useId()
   const update = useUpdater()
@@ -244,11 +242,11 @@ const TextContentInputView: FunctionComponent<{
     //  and the producer callback function might be called later
     const value = e.currentTarget.value
     update((draft) => {
-      const currentContent = draft[uuid]
+      const currentContent = draft.data[uuid]
       if (!isTextContent(currentContent)) {
         return
       }
-      draft[uuid] = {
+      draft.data[uuid] = {
         ...currentContent,
         value,
       }
@@ -287,8 +285,7 @@ const NumberContentInputView: FunctionComponent<{
   uuid: Uuid
 }> = memo((props) => {
   const { schema, uuid } = props
-  const selectByUuid = useSelectByUuid(uuid)
-  const content = useSelector(selectByUuid)
+  const content = useContentByUuid(uuid)
   const inputId = useId()
   const helperTextId = useId()
   const update = useUpdater()
@@ -299,11 +296,11 @@ const NumberContentInputView: FunctionComponent<{
       return
     }
     update((draft) => {
-      const currentContent = draft[uuid]
+      const currentContent = draft.data[uuid]
       if (!isNumberContent(currentContent)) {
         return
       }
-      draft[uuid] = {
+      draft.data[uuid] = {
         ...currentContent,
         value,
       }
@@ -353,11 +350,11 @@ const NumberContentInputView: FunctionComponent<{
 //     // //  and the producer callback function might be called later
 //     // const value = e.currentTarget.value
 //     // update((draft) => {
-//     //   const currentContent = draft[uuid]
+//     //   const currentContent = draft.data[uuid]
 //     //   if (!isOneOfContent(currentContent)) {
 //     //     return
 //     //   }
-//     //   draft[uuid] = {
+//     //   draft.data[uuid] = {
 //     //     ...currentContent,
 //     //     value,
 //     //   }
@@ -396,8 +393,7 @@ const ObjectContentInputView: FunctionComponent<{
 }> = memo((props) => {
   const { schema, uuid } = props
 
-  const selectByUuid = useSelectByUuid(uuid)
-  const content = useSelector(selectByUuid)
+  const content = useContentByUuid(uuid)
 
   if (content === undefined) {
     return <ContentNotFoundView uuid={uuid} />
@@ -447,7 +443,6 @@ const ArrayContentInputView: FunctionComponent<{
 
   const update = useUpdater()
   const content = useContentByUuid(uuid)
-  // const subs = useSelector((store) => selectContentStoreByUuid(store, uuid))
 
   if (content === undefined) {
     return <ContentNotFoundView uuid={uuid} />
@@ -465,24 +460,30 @@ const ArrayContentInputView: FunctionComponent<{
   const createHandleMenuClick = (newContent: Content) => {
     return () => {
       update((draft) => {
-        const currentContent = draft[uuid]
+        const currentContent = draft.data[uuid]
         if (!isArrayContent(currentContent)) {
           return
         }
         if (!newContent) {
+          console.log('newContent is undefined')
           return
         }
         const tmpStore: ContentStore = {
-          [newContent.uuid]: newContent,
+          tag: 'content-store',
+          rootUuid: newContent.uuid,
+          data: {
+            [newContent.uuid]: newContent,
+          },
         }
         const clonedStore = cloneContent(tmpStore)
 
-        Object.assign(draft, clonedStore)
+        Object.assign(draft.data, clonedStore.data)
+        // TODO!!!!! We need the root!
+        const valueUuid = Object.keys(clonedStore.data)[0]
         currentContent.value.push({
           tag: 'reference',
           uuid: randomUuid(),
-          // TODO!!!!! We need the root!
-          valueUuid: Object.keys(clonedStore)[0],
+          valueUuid,
         })
       })
     }

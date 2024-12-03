@@ -201,7 +201,6 @@ export type Content =
   | ObjectContent
   | ArrayContent
   | PrimitiveContent
-  | OneOfContent
 
 export type ContentInput =
   | TextContentInput
@@ -212,7 +211,17 @@ export type ContentInput =
   | OneOfContentInput
   | ContentInputReference
 
-export type ContentStore = Record<Uuid, Content>
+export type ContentStore = {
+  tag: 'content-store'
+  rootUuid: Uuid
+  data: Record<Uuid, Content>
+}
+// export type ContentTree = {
+//   tag: 'content-tree'
+//   data: unknown
+// }
+
+export type ContentStoreTmp = Record<Uuid, Content>
 
 /*
  *  Flatten/Unflatten
@@ -222,7 +231,10 @@ export type ContentStore = Record<Uuid, Content>
 export type ContentTree = unknown
 export type ValueOnlyTree = unknown
 
-export const subStore = (store: ContentStore, uuid: Uuid): ContentStore => {
+export const subStore = (
+  store: ContentStoreTmp,
+  uuid: Uuid,
+): ContentStoreTmp => {
   const content = store[uuid]
   if (content === undefined) {
     return {}
@@ -240,11 +252,11 @@ export const subStore = (store: ContentStore, uuid: Uuid): ContentStore => {
       return Object.entries(content.value).reduce((acc, [_key, ref]) => {
         Object.assign(acc, subStore(store, ref.valueUuid))
         return acc
-      }, {} as ContentStore)
+      }, {} as ContentStoreTmp)
     case 'array':
       return content.value.reduce((acc, ref) => {
         return { ...acc, ...subStore(store, ref.valueUuid) }
-      }, {} as ContentStore)
+      }, {} as ContentStoreTmp)
     default:
       // TODO of course, we're not going to keep any exceptions in the final version
       throw new Error('Unknown tag')
@@ -289,7 +301,7 @@ export const toStore = (content: ContentTree): ContentStore => {
         value: Object.entries(content.value).reduce(
           (acc, [key, child]) => {
             const store = toStore(child)
-            Object.assign(result, store)
+            Object.assign(result, store.data)
             acc[key] = {
               tag: 'reference',
               uuid: randomUuid(),
@@ -307,7 +319,7 @@ export const toStore = (content: ContentTree): ContentStore => {
         uuid: content.uuid,
         value: content.value.map((child) => {
           const store = toStore(child)
-          Object.assign(result, store)
+          Object.assign(result, store.data)
           return {
             tag: 'reference',
             uuid: randomUuid(),
@@ -320,11 +332,19 @@ export const toStore = (content: ContentTree): ContentStore => {
       // TODO of course, we're not going to keep any exceptions in the final version
       throw new Error(`Unknown tag ${JSON.stringify(content.tag)}`)
   }
-  return result
+  return {
+    tag: 'content-store',
+    rootUuid: content.uuid,
+    data: result,
+  }
 }
 
-export const toTree = (store: ContentStore, rootUuid: Uuid): ContentTree => {
-  const content = store[rootUuid]
+export const toTree = (store: ContentStore): ContentTree => {
+  const content = store.data[store.rootUuid]
+  if (content === undefined) {
+    // TODO of course, we're not going to keep any exceptions in the final version
+    throw new Error('Undefined content')
+  }
   switch (content.tag) {
     case 'text':
       return content
@@ -332,15 +352,13 @@ export const toTree = (store: ContentStore, rootUuid: Uuid): ContentTree => {
       return content
     case 'primitive':
       return content
-    case 'one-of':
-      return toTree(store, content.value.valueUuid)
     case 'object':
       return {
         tag: 'object',
         uuid: content.uuid,
         value: Object.entries(content.value).reduce(
           (acc, [key, ref]) => {
-            acc[key] = toTree(store, ref.valueUuid)
+            acc[key] = toTree({ ...store, rootUuid: ref.valueUuid })
             return acc
           },
           {} as Record<string, ContentTree>,
@@ -350,11 +368,13 @@ export const toTree = (store: ContentStore, rootUuid: Uuid): ContentTree => {
       return {
         tag: 'array',
         uuid: content.uuid,
-        value: content.value.map((ref) => toTree(store, ref.valueUuid)),
+        value: content.value.map((ref) =>
+          toTree({ ...store, rootUuid: ref.valueUuid }),
+        ),
       }
     default:
       // TODO of course, we're not going to keep any exceptions in the final version
-      throw new Error('Unknown tag')
+      throw new Error(`Unknown tag ${content.tag}`)
   }
 }
 
@@ -383,10 +403,15 @@ export const toValueOnlyTree = (content: ContentTree): ValueOnlyTree => {
 }
 
 export const cloneContent = (content: ContentStore): ContentStore => {
-  const newUuidFromOld = uuidMapping(content)
+  const newUuidFromOld = uuidMapping(content.data)
+  const newRootUuid = newUuidFromOld.get(content.rootUuid)
+  if (newRootUuid === undefined) {
+    // Should never happen
+    throw new Error('Undefined root uuid')
+  }
   const result: Record<Uuid, Content> = {}
   for (const [oldUuid, newUuid] of newUuidFromOld) {
-    const oldContent = content[oldUuid]
+    const oldContent = content.data[oldUuid]
     if (oldContent === undefined) {
       throw new Error('Undefined content')
     }
@@ -409,27 +434,21 @@ export const cloneContent = (content: ContentStore): ContentStore => {
           uuid: newUuid,
         }
         break
-      case 'one-of':
-        result[newUuid] = {
-          ...oldContent,
-          uuid: newUuid,
-          value: {
-            tag: 'reference',
-            uuid: randomUuid(),
-            valueUuid: newUuidFromOld.get(oldContent.value.valueUuid),
-          },
-        }
-        break
       case 'object':
         result[newUuid] = {
           tag: 'object',
           uuid: newUuid,
           value: Object.entries(oldContent.value).reduce(
             (acc, [key, child]) => {
+              const newValueUuid = newUuidFromOld.get(child.valueUuid)
+              if (newValueUuid === undefined) {
+                // Should never happen
+                throw new Error('Undefined new uuid')
+              }
               acc[key] = {
                 tag: 'reference',
                 uuid: randomUuid(),
-                valueUuid: newUuidFromOld.get(child.valueUuid),
+                valueUuid: newValueUuid,
               }
               return acc
             },
@@ -441,11 +460,18 @@ export const cloneContent = (content: ContentStore): ContentStore => {
         result[newUuid] = {
           tag: 'array',
           uuid: newUuid,
-          value: oldContent.value.map((child) => ({
-            tag: 'reference',
-            uuid: randomUuid(),
-            valueUuid: newUuidFromOld.get(child.valueUuid),
-          })),
+          value: oldContent.value.map((child) => {
+            const newValueUuid = newUuidFromOld.get(child.valueUuid)
+            if (newValueUuid === undefined) {
+              // Should never happen
+              throw new Error('Undefined new uuid')
+            }
+            return {
+              tag: 'reference',
+              uuid: randomUuid(),
+              valueUuid: newValueUuid,
+            }
+          }),
         }
         break
       default:
@@ -453,10 +479,14 @@ export const cloneContent = (content: ContentStore): ContentStore => {
         throw new Error('Unknown tag')
     }
   }
-  return result
+  return {
+    tag: 'content-store',
+    rootUuid: newRootUuid,
+    data: result,
+  }
 }
 
-const uuidMapping = (content: ContentStore): Map<Uuid, Uuid> => {
+const uuidMapping = (content: ContentStoreTmp): Map<Uuid, Uuid> => {
   const result = new Map<Uuid, Uuid>()
   const oldUuids = Object.keys(content)
   for (const oldUuid of oldUuids) {

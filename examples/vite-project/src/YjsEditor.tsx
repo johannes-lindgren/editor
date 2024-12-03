@@ -7,7 +7,7 @@ import {
 import {
   objectInput,
   textInput,
-  ContentStore,
+  ContentStoreTmp,
   numberInput,
   toTree,
   toStore,
@@ -111,13 +111,9 @@ const contentTree = {
       value: 'Page',
     },
     align: {
-      tag: 'one-of',
+      tag: 'primitive',
       uuid: randomUuid(),
-      value: {
-        tag: 'primitive',
-        uuid: randomUuid(),
-        value: 'left',
-      },
+      value: 'left',
     },
     title: {
       tag: 'text',
@@ -175,7 +171,7 @@ const contentTree = {
 }
 
 const rootUuid = contentTree.uuid
-const defaultContent: ContentStore = toStore(contentTree)
+const defaultContent: ContentStoreTmp = toStore(contentTree)
 
 const store: EditorStore = createBinder(
   new Y.Doc().getMap('content'),
@@ -226,7 +222,7 @@ const ContentJsonView: FunctionComponent<{
   )
 }
 
-const selectAll = (state: ContentStore) => state
+const selectAll = (state: ContentStoreTmp) => state
 
 const ContentJsonViewWithContext = () => {
   const state = useSelector(selectAll)
