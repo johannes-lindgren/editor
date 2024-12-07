@@ -5,16 +5,20 @@ import {
   Typography,
   Box,
   AlertTitle,
+  Divider,
 } from '@mui/material'
 import {
   createContext,
   FormEventHandler,
+  Fragment,
   FunctionComponent,
   memo,
   ReactNode,
   useCallback,
   useContext,
   useId,
+  useMemo,
+  useState,
   useSyncExternalStore,
 } from 'react'
 import {
@@ -37,7 +41,10 @@ import {
   arrayInput,
   subStore,
   cloneContent,
-  ContentStore,
+  FlatContent,
+  InputMap,
+  FlatStore,
+  toFlat,
 } from '@editor/model'
 import {
   Label,
@@ -46,6 +53,8 @@ import {
   AnimatedListbox,
   MenuButton,
   MenuItem,
+  Button,
+  Scale,
 } from './components'
 import { v4 as randomUuid } from 'uuid'
 import * as React from 'react'
@@ -55,31 +64,62 @@ import { Menu } from '@mui/base/Menu'
 
 type UpdateFn<T> = (draft: T) => void
 
-export type EditorStore = {
+export type Store<T> = {
   subscribe: (fn: (data: unknown) => void) => () => void
-  get: () => ContentStore
-  update: (fn: UpdateFn<ContentStore>) => void
+  get: () => T
+  update: (fn: UpdateFn<T>) => void
 }
 
-const StoreContext = createContext<EditorStore | undefined>(undefined)
+export type ContentStore = Store<FlatContent>
+export type InputStore = Store<InputMap>
 
-export const StoreContextProvider: FunctionComponent<{
-  store: EditorStore
+const readOnlyStore = <T,>(data: T): Store<T> => ({
+  subscribe: () => () => {},
+  get: () => data,
+  update: () => {},
+})
+
+const ContentYjsStoreContext = createContext<ContentStore | undefined>(
+  undefined,
+)
+
+const ContentInputYjsStoreContext = createContext<InputStore | undefined>(
+  undefined,
+)
+
+export const ContentYjsStoreContextProvider: FunctionComponent<{
+  store: ContentStore
   children: ReactNode
 }> = (props) => {
   const { store, children } = props
-  return <StoreContext.Provider value={store}>{children}</StoreContext.Provider>
+  return (
+    <ContentYjsStoreContext.Provider value={store}>
+      {children}
+    </ContentYjsStoreContext.Provider>
+  )
+}
+
+export const ContentInputYjsStoreContextProvider: FunctionComponent<{
+  store: InputStore
+  children: ReactNode
+}> = (props) => {
+  const { store, children } = props
+  return (
+    <ContentInputYjsStoreContext.Provider value={store}>
+      {children}
+    </ContentInputYjsStoreContext.Provider>
+  )
 }
 
 const useUpdater = () => {
-  const store = useContext(StoreContext)!
+  const store = useContext(ContentYjsStoreContext)!
   return store.update
 }
 
 export const useSelector = <Selection,>(
-  selector: (store: ContentStore) => Selection,
+  selector: (store: FlatContent) => Selection,
 ): Selection => {
-  const store = useContext(StoreContext)!
+  const store = useContext(ContentYjsStoreContext)!
 
   const getSnapshot = useCallback(
     () => selector(store.get()),
@@ -89,9 +129,22 @@ export const useSelector = <Selection,>(
   return useSyncExternalStore(store.subscribe, getSnapshot)
 }
 
-const useSelectByUuid = (uuid: Uuid) => {
+export const useContentInputSelector = <Selection,>(
+  selector: (store: InputMap) => Selection,
+): Selection => {
+  const store = useContext(ContentInputYjsStoreContext)!
+
+  const getSnapshot = useCallback(
+    () => selector(store.get()),
+    [store, selector],
+  )
+
+  return useSyncExternalStore(store.subscribe, getSnapshot)
+}
+
+const useSelectByUuid = <T,>(uuid: Uuid) => {
   return useCallback(
-    (store: ContentStore) => {
+    (store: FlatStore<T>) => {
       return store.data[uuid]
     },
     [uuid],
@@ -99,8 +152,13 @@ const useSelectByUuid = (uuid: Uuid) => {
 }
 
 const useContentByUuid = (uuid: Uuid) => {
-  const selectByUuid = useSelectByUuid(uuid)
+  const selectByUuid = useSelectByUuid<Content>(uuid)
   return useSelector(selectByUuid)
+}
+
+const useContentInputByUuid = (uuid: Uuid) => {
+  const selectByUuid = useSelectByUuid<ContentInput>(uuid)
+  return useContentInputSelector(selectByUuid)
 }
 
 const JsonView: FunctionComponent<{ data: unknown }> = (props) => {
@@ -171,6 +229,20 @@ export const ContentNotFoundView: FunctionComponent<{
       <AlertTitle>Content not found</AlertTitle>
       <Typography>
         Could not find content by uuid {JSON.stringify(uuid)}
+      </Typography>
+    </Alert>
+  )
+})
+
+export const InputNotFoundView: FunctionComponent<{
+  uuid: Uuid
+}> = memo((props) => {
+  const { uuid } = props
+  return (
+    <Alert severity="error">
+      <AlertTitle>Input not found</AlertTitle>
+      <Typography>
+        Could not find input by uuid {JSON.stringify(uuid)}
       </Typography>
     </Alert>
   )
@@ -270,6 +342,9 @@ const TextContentInputView: FunctionComponent<{
     <FormControl>
       {schema.label && <Label>{schema.label}</Label>}
       <StyledInput
+        sx={{
+          flex: 1,
+        }}
         label={schema.label}
         id={inputId}
         aria-describedby={helperTextId}
@@ -409,7 +484,7 @@ const ObjectContentInputView: FunctionComponent<{
         borderRadius: 1,
       }}
     >
-      <Label>Body</Label>
+      <Label>Object</Label>
       {Object.entries(schema.fields).map(([key, field]) => {
         const childContent = content.value[key]
         if (!childContent) {
@@ -427,12 +502,12 @@ const ObjectContentInputView: FunctionComponent<{
   )
 })
 
-const selectStore = (store: ContentStore) => store
-const selectUuid = (_: ContentStore, uuid: Uuid) => uuid
+const selectStore = (store: FlatContent) => store
+const selectUuid = (_: FlatContent, uuid: Uuid) => uuid
 
 const selectContentStoreByUuid = createSelector(
   [selectStore, selectUuid],
-  (store: ContentStore, uuid: Uuid) => subStore(store, uuid),
+  (store: FlatContent, uuid: Uuid) => subStore(store, uuid),
 )
 
 const ArrayContentInputView: FunctionComponent<{
@@ -443,6 +518,9 @@ const ArrayContentInputView: FunctionComponent<{
 
   const update = useUpdater()
   const content = useContentByUuid(uuid)
+
+  const [isOpen, setIsOpen] = useState(false)
+  const [transitionEndCounter, setTransitionEndCounter] = useState(0)
 
   if (content === undefined) {
     return <ContentNotFoundView uuid={uuid} />
@@ -457,33 +535,20 @@ const ArrayContentInputView: FunctionComponent<{
     )
   }
 
-  const createHandleMenuClick = (newContent: Content) => {
+  const createHandleMenuClick = (contentTemplate: FlatContent) => {
     return () => {
       update((draft) => {
         const currentContent = draft.data[uuid]
         if (!isArrayContent(currentContent)) {
           return
         }
-        if (!newContent) {
-          console.log('newContent is undefined')
-          return
-        }
-        const tmpStore: ContentStore = {
-          tag: 'content-store',
-          rootUuid: newContent.uuid,
-          data: {
-            [newContent.uuid]: newContent,
-          },
-        }
-        const clonedStore = cloneContent(tmpStore)
+        const clonedStore = cloneContent(contentTemplate)
 
         Object.assign(draft.data, clonedStore.data)
-        // TODO!!!!! We need the root!
-        const valueUuid = Object.keys(clonedStore.data)[0]
         currentContent.value.push({
           tag: 'reference',
           uuid: randomUuid(),
-          valueUuid,
+          valueUuid: clonedStore.rootUuid,
         })
       })
     }
@@ -504,16 +569,36 @@ const ArrayContentInputView: FunctionComponent<{
           uuid={childContent.valueUuid}
         />
       ))}
-      <Dropdown>
+      <Dropdown
+        open={isOpen}
+        onOpenChange={(_, isOpen) => setIsOpen(isOpen)}
+      >
         <MenuButton>Add</MenuButton>
-        <Menu slots={{ listbox: AnimatedListbox }}>
-          {schema.items.map((item) => (
-            <MenuItem
-              key={item.uuid}
-              onClick={createHandleMenuClick(item)}
-            >
-              {item.tag}
-            </MenuItem>
+        <Menu
+          slots={{
+            listbox: AnimatedListbox,
+          }}
+          onTransitionEnd={() => {
+            setTransitionEndCounter((count) => count + 1)
+          }}
+        >
+          {schema.items.map((template, index) => (
+            <Fragment key={template.rootUuid}>
+              {index !== 0 && <Divider sx={{ my: 1 }} />}
+              <MenuItem
+                onClick={createHandleMenuClick(template)}
+                sx={{
+                  width: 200,
+                }}
+              >
+                <Scale
+                  scale={2 / 3}
+                  dependencies={[transitionEndCounter]}
+                >
+                  <ContentPreview template={template} />
+                </Scale>
+              </MenuItem>
+            </Fragment>
           ))}
         </Menu>
       </Dropdown>
@@ -521,41 +606,48 @@ const ArrayContentInputView: FunctionComponent<{
   )
 })
 
-const ContentInputViewReferencedSchema: FunctionComponent<{
+const ContentPreview: FunctionComponent<{
+  template: FlatContent
+}> = memo((props) => {
+  const { template } = props
+
+  const content = useMemo(() => cloneContent(template), [template])
+  const store = useMemo(() => readOnlyStore(content), [content])
+
+  return (
+    <ContentYjsStoreContextProvider store={store}>
+      <Box
+        sx={{
+          pointerEvents: 'none',
+          p: 2,
+        }}
+      >
+        <ContentInputViewReferencedSchema uuid={content.rootUuid} />
+      </Box>
+    </ContentYjsStoreContextProvider>
+  )
+})
+
+export const ContentInputViewReferencedSchema: FunctionComponent<{
   uuid: Uuid
 }> = memo((props) => {
   const { uuid } = props
   const content = useContentByUuid(uuid)
+  const inputUuid = content?.input?.inputUuid ?? ''
+  const contentInput = useContentInputByUuid(inputUuid)
   if (content === undefined) {
     return <ContentNotFoundView uuid={uuid} />
   }
+  if (contentInput === undefined) {
+    return <InputNotFoundView uuid={inputUuid} />
+  }
   return (
     <ContentInputView
-      schema={inputFromContent(content)}
+      schema={contentInput}
       uuid={content.uuid}
     />
   )
 })
-
-/**
- * TODO remove... probably. The thing is that we don't want to have to fall back to some defaults
- * The input is not a function of the content, nor does it define what the default content should be.
- * @param content
- */
-const inputFromContent = (content: Content): ContentInput => {
-  switch (content.tag) {
-    case 'text':
-      return textInput()
-    case 'number':
-      return numberInput()
-    case 'primitive':
-      return primitiveInput()
-    case 'object':
-      return objectInput()
-    case 'array':
-      return arrayInput()
-  }
-}
 
 export const ContentInputView: FunctionComponent<{
   schema: ContentInput
@@ -606,25 +698,30 @@ export const ContentInputView: FunctionComponent<{
           uuid={uuid}
         />
       )
+    case 'reference-input':
+      return <ContentInputViewReferencedSchema uuid={uuid} />
     default:
       return <UnknownInputView schema={schema} />
   }
 })
 
 export type EditorProps = {
-  store: EditorStore
+  store: ContentStore
+  inputStore: InputStore
   schema: ContentInput
   rootUuid: Uuid
 }
 
 export const Editor: FunctionComponent<EditorProps> = (props) => {
-  const { store, schema, rootUuid } = props
+  const { store, schema, rootUuid, inputStore } = props
   return (
-    <StoreContextProvider store={store}>
-      <ContentInputView
-        schema={schema}
-        uuid={rootUuid}
-      />
-    </StoreContextProvider>
+    <ContentYjsStoreContextProvider store={store}>
+      <ContentInputYjsStoreContextProvider store={inputStore}>
+        <ContentInputView
+          schema={schema}
+          uuid={rootUuid}
+        />
+      </ContentInputYjsStoreContextProvider>
+    </ContentYjsStoreContextProvider>
   )
 }

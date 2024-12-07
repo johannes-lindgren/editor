@@ -1,69 +1,20 @@
-/*
- * Text
- */
 import {
   equalsGuard,
   isArray,
   isNumber,
   isString,
   objectGuard,
+  optional,
+  optionalGuard,
 } from 'pure-parse'
 import { v4 as randomUuid } from 'uuid'
 
-export type Uuid = string
-export const isContentUuid = isString
-
-export type TextContent = {
-  tag: 'text'
-  uuid: Uuid
-  value: string
-}
-
-export const isTextContent = objectGuard<TextContent>({
-  tag: equalsGuard('text'),
-  uuid: isContentUuid,
-  value: isString,
-})
-
-export type TextContentInput = {
-  tag: 'text-input'
-  label?: string
-}
-
-export const textInput = (
-  params?: Omit<TextContentInput, 'tag'>,
-): TextContentInput => ({
-  tag: 'text-input',
-  ...params,
-})
-
 /*
- * Number
+ * Uuid
  */
 
-export type NumberContent = {
-  tag: 'number'
-  uuid: Uuid
-  value: number
-}
-
-export const isNumberContent = objectGuard<NumberContent>({
-  tag: equalsGuard('number'),
-  uuid: isContentUuid,
-  value: isNumber,
-})
-
-export type NumberContentInput = {
-  tag: 'number-input'
-  label?: string
-}
-
-export const numberInput = (
-  params?: Omit<NumberContentInput, 'tag'>,
-): NumberContentInput => ({
-  tag: 'number-input',
-  ...params,
-})
+export type Uuid = string
+export const isUuid = isString
 
 /*
  * Reference
@@ -75,11 +26,95 @@ export type ContentReference = {
   valueUuid: Uuid
 }
 
+export const isContentReference = objectGuard<ContentReference>({
+  tag: equalsGuard('reference'),
+  uuid: isUuid,
+  valueUuid: isUuid,
+})
+
 export type ContentInputReference = {
   tag: 'reference-input'
   uuid: Uuid
   inputUuid: Uuid
 }
+
+export const contentInputReference = (
+  contentInput: ContentInput,
+): ContentInputReference => ({
+  tag: 'reference-input',
+  uuid: randomUuid(),
+  inputUuid: contentInput.uuid,
+})
+
+export const isContentInputReference = objectGuard<ContentInputReference>({
+  tag: equalsGuard('reference-input'),
+  uuid: isUuid,
+  inputUuid: isUuid,
+})
+
+/*
+ * Text
+ */
+
+export type TextContent = {
+  tag: 'text'
+  uuid: Uuid
+  input?: ContentInputReference
+  value: string
+}
+
+export const isTextContent = objectGuard<TextContent>({
+  tag: equalsGuard('text'),
+  uuid: isUuid,
+  input: optionalGuard(isContentInputReference),
+  value: isString,
+})
+
+export type TextContentInput = {
+  tag: 'text-input'
+  uuid: Uuid
+  label?: string
+}
+
+export const textInput = (
+  params?: Omit<TextContentInput, 'tag' | 'uuid'>,
+): TextContentInput => ({
+  tag: 'text-input',
+  uuid: randomUuid(),
+  ...params,
+})
+
+/*
+ * Number
+ */
+
+export type NumberContent = {
+  tag: 'number'
+  uuid: Uuid
+  input?: ContentInputReference
+  value: number
+}
+
+export const isNumberContent = objectGuard<NumberContent>({
+  tag: equalsGuard('number'),
+  uuid: isUuid,
+  input: optionalGuard(isContentInputReference),
+  value: isNumber,
+})
+
+export type NumberContentInput = {
+  tag: 'number-input'
+  uuid: Uuid
+  label?: string
+}
+
+export const numberInput = (
+  params?: Omit<NumberContentInput, 'tag' | 'uuid'>,
+): NumberContentInput => ({
+  tag: 'number-input',
+  uuid: randomUuid(),
+  ...params,
+})
 
 /*
  * Object
@@ -88,17 +123,20 @@ export type ContentInputReference = {
 export type ObjectContent = {
   tag: 'object'
   uuid: Uuid
+  input?: ContentInputReference
   value: Record<string, ContentReference>
 }
 export type ObjectContentInput = {
   tag: 'object-input'
+  uuid: Uuid
   fields: Record<string, ContentInput>
 }
 
 export const objectInput = (
-  params: Omit<ObjectContentInput, 'tag'>,
+  params: Omit<ObjectContentInput, 'tag' | 'uuid'>,
 ): ObjectContentInput => ({
   tag: 'object-input',
+  uuid: randomUuid(),
   ...params,
 })
 
@@ -109,23 +147,27 @@ export const objectInput = (
 export type ArrayContent = {
   tag: 'array'
   uuid: Uuid
+  input?: ContentInputReference
   value: ContentReference[]
 }
 
 export const isArrayContent = objectGuard({
   tag: equalsGuard('array'),
-  uuid: isContentUuid,
+  uuid: isUuid,
+  input: optionalGuard(isContentInputReference),
   value: isArray,
 })
 
 export type ArrayContentInput = {
   tag: 'array-input'
-  items: Content[]
+  uuid: Uuid
+  items: FlatContent[]
 }
 export const arrayInput = (
-  params: Omit<ArrayContentInput, 'tag'>,
+  params: Omit<ArrayContentInput, 'tag' | 'uuid'>,
 ): ArrayContentInput => ({
   tag: 'array-input',
+  uuid: randomUuid(),
   ...params,
 })
 
@@ -136,25 +178,29 @@ export const arrayInput = (
 export type PrimitiveContent = {
   tag: 'primitive'
   uuid: Uuid
+  input?: ContentInputReference
   value: string
 }
 
 export const isPrimitiveContent = objectGuard<PrimitiveContent>({
   tag: equalsGuard('primitive'),
-  uuid: isContentUuid,
+  uuid: isUuid,
+  input: optionalGuard(isContentInputReference),
   value: isString,
 })
 
 export type PrimitiveContentInput = {
   tag: 'primitive-input'
+  uuid: Uuid
   label?: string
   value: string
 }
 
 export const primitiveInput = (
-  params: Omit<PrimitiveContentInput, 'tag'>,
+  params: Omit<PrimitiveContentInput, 'tag' | 'uuid'>,
 ): PrimitiveContentInput => ({
   tag: 'primitive-input',
+  uuid: randomUuid(),
   ...params,
 })
 
@@ -165,29 +211,33 @@ export const primitiveInput = (
 export type OneOfContent = {
   tag: 'one-of'
   uuid: Uuid
+  input?: ContentInputReference
   value: ContentReference
 }
 
 export const isOneOfContent = objectGuard<OneOfContent>({
   tag: equalsGuard('one-of'),
-  uuid: isContentUuid,
+  uuid: isUuid,
+  input: optionalGuard(isContentInputReference),
   value: objectGuard({
     tag: equalsGuard('reference'),
-    uuid: isContentUuid,
-    valueUuid: isContentUuid,
+    uuid: isUuid,
+    valueUuid: isUuid,
   }),
 })
 
 export type OneOfContentInput = {
   tag: 'one-of-input'
+  uuid: Uuid
   label?: string
   options: ContentInput[]
 }
 
 export const oneOfInput = (
-  params: Omit<OneOfContentInput, 'tag'>,
+  params: Omit<OneOfContentInput, 'tag' | 'uuid'>,
 ): OneOfContentInput => ({
   tag: 'one-of-input',
+  uuid: randomUuid(),
   ...params,
 })
 
@@ -211,11 +261,21 @@ export type ContentInput =
   | OneOfContentInput
   | ContentInputReference
 
-export type ContentStore = {
+export type FlatStore<T> = {
+  data: Record<Uuid, T>
+}
+
+export type FlatContent = {
   tag: 'content-store'
   rootUuid: Uuid
   data: Record<Uuid, Content>
 }
+
+export type InputMap = {
+  tag: 'content-input-store'
+  data: Record<Uuid, ContentInput>
+}
+
 // export type ContentTree = {
 //   tag: 'content-tree'
 //   data: unknown
@@ -235,39 +295,40 @@ export const subStore = (
   store: ContentStoreTmp,
   uuid: Uuid,
 ): ContentStoreTmp => {
+  throw new Error('Not implemented')
   const content = store[uuid]
   if (content === undefined) {
     return {}
   }
-  switch (content.tag) {
-    case 'text':
-      return { [uuid]: content }
-    case 'number':
-      return { [uuid]: content }
-    case 'primitive':
-      return { [uuid]: content }
-    case 'one-of':
-      return subStore(store, content.value.valueUuid)
-    case 'object':
-      return Object.entries(content.value).reduce((acc, [_key, ref]) => {
-        Object.assign(acc, subStore(store, ref.valueUuid))
-        return acc
-      }, {} as ContentStoreTmp)
-    case 'array':
-      return content.value.reduce((acc, ref) => {
-        return { ...acc, ...subStore(store, ref.valueUuid) }
-      }, {} as ContentStoreTmp)
-    default:
-      // TODO of course, we're not going to keep any exceptions in the final version
-      throw new Error('Unknown tag')
-  }
+  // switch (content.tag) {
+  //   case 'text':
+  //     return { [uuid]: content }
+  //   case 'number':
+  //     return { [uuid]: content }
+  //   case 'primitive':
+  //     return { [uuid]: content }
+  //   case 'one-of':
+  //     return subStore(store, content.value.valueUuid)
+  //   case 'object':
+  //     return Object.entries(content.value).reduce((acc, [_key, ref]) => {
+  //       Object.assign(acc, subStore(store, ref.valueUuid))
+  //       return acc
+  //     }, {} as ContentStoreTmp)
+  //   case 'array':
+  //     return content.value.reduce((acc, ref) => {
+  //       return { ...acc, ...subStore(store, ref.valueUuid) }
+  //     }, {} as ContentStoreTmp)
+  //   default:
+  //     // TODO of course, we're not going to keep any exceptions in the final version
+  //     throw new Error('Unknown tag')
+  // }
 }
 
 /**
  * Not meant to be used normally, but useful in tests
  * @param content
  */
-export const toStore = (content: ContentTree): ContentStore => {
+export const toFlat = (content: ContentTree): FlatContent => {
   const result: Record<Uuid, Content> = {}
 
   switch (content.tag) {
@@ -282,7 +343,7 @@ export const toStore = (content: ContentTree): ContentStore => {
       break
     case 'one-of':
       const child = content.value
-      const store = toStore(child)
+      const store = toFlat(child)
       Object.assign(result, store)
       result[content.uuid] = {
         tag: 'one-of',
@@ -296,11 +357,10 @@ export const toStore = (content: ContentTree): ContentStore => {
       break
     case 'object':
       result[content.uuid] = {
-        tag: 'object',
-        uuid: content.uuid,
+        ...content,
         value: Object.entries(content.value).reduce(
           (acc, [key, child]) => {
-            const store = toStore(child)
+            const store = toFlat(child)
             Object.assign(result, store.data)
             acc[key] = {
               tag: 'reference',
@@ -318,7 +378,7 @@ export const toStore = (content: ContentTree): ContentStore => {
         tag: 'array',
         uuid: content.uuid,
         value: content.value.map((child) => {
-          const store = toStore(child)
+          const store = toFlat(child)
           Object.assign(result, store.data)
           return {
             tag: 'reference',
@@ -339,7 +399,7 @@ export const toStore = (content: ContentTree): ContentStore => {
   }
 }
 
-export const toTree = (store: ContentStore): ContentTree => {
+export const toTree = (store: FlatContent): ContentTree => {
   const content = store.data[store.rootUuid]
   if (content === undefined) {
     // TODO of course, we're not going to keep any exceptions in the final version
@@ -354,8 +414,7 @@ export const toTree = (store: ContentStore): ContentTree => {
       return content
     case 'object':
       return {
-        tag: 'object',
-        uuid: content.uuid,
+        ...content,
         value: Object.entries(content.value).reduce(
           (acc, [key, ref]) => {
             acc[key] = toTree({ ...store, rootUuid: ref.valueUuid })
@@ -402,7 +461,7 @@ export const toValueOnlyTree = (content: ContentTree): ValueOnlyTree => {
   }
 }
 
-export const cloneContent = (content: ContentStore): ContentStore => {
+export const cloneContent = (content: FlatContent): FlatContent => {
   const newUuidFromOld = uuidMapping(content.data)
   const newRootUuid = newUuidFromOld.get(content.rootUuid)
   if (newRootUuid === undefined) {
@@ -437,6 +496,13 @@ export const cloneContent = (content: ContentStore): ContentStore => {
       case 'object':
         result[newUuid] = {
           tag: 'object',
+          // TODO extract function
+          input: oldContent.input
+            ? {
+                ...oldContent.input,
+                uuid: randomUuid(),
+              }
+            : undefined,
           uuid: newUuid,
           value: Object.entries(oldContent.value).reduce(
             (acc, [key, child]) => {

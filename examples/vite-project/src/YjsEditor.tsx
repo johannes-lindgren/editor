@@ -1,20 +1,24 @@
 import {
   Editor,
-  EditorStore,
-  StoreContextProvider,
+  ContentStore,
+  ContentYjsStoreContextProvider,
   useSelector,
+  InputStore,
 } from '@editor/dom'
 import {
   objectInput,
   textInput,
-  ContentStoreTmp,
   numberInput,
   toTree,
-  toStore,
+  toFlat,
   toValueOnlyTree,
   arrayInput,
   oneOfInput,
   primitiveInput,
+  FlatContent,
+  contentInputReference,
+  ContentInput,
+  InputMap,
 } from '@editor/model'
 import { createBinder } from 'react-immer-yjs'
 import * as Y from 'yjs'
@@ -41,11 +45,39 @@ import { v4 as randomUuid } from 'uuid'
 // })
 // const inputs = [defaultTextInput]
 
-const objectSchema = objectInput({
+const basicTextInput = textInput({
+  label: 'Text',
+})
+const basicNumberInput = numberInput({
+  label: 'Number',
+})
+
+const cardInput = objectInput({
+  fields: {
+    title: textInput({
+      label: 'Title',
+    }),
+    description: textInput({
+      label: 'Description',
+    }),
+  },
+})
+
+const pageInput = objectInput({
   fields: {
     type: primitiveInput({
       label: 'Type',
       value: 'page',
+    }),
+    title: textInput({
+      label: 'Title',
+    }),
+    description: textInput({
+      label: 'Description',
+    }),
+    referencedText: contentInputReference(basicTextInput),
+    paddingTop: numberInput({
+      label: 'Padding Top',
     }),
     align: oneOfInput({
       label: 'Alignment',
@@ -59,15 +91,6 @@ const objectSchema = objectInput({
           value: 'center',
         }),
       ],
-    }),
-    title: textInput({
-      label: 'Title',
-    }),
-    description: textInput({
-      label: 'Description',
-    }),
-    paddingTop: numberInput({
-      label: 'Padding Top',
     }),
     body: objectInput({
       fields: {
@@ -84,23 +107,51 @@ const objectSchema = objectInput({
         {
           tag: 'text',
           uuid: randomUuid(),
+          input: contentInputReference(basicTextInput),
           value: 'this is from a template',
         },
         {
           tag: 'text',
           uuid: randomUuid(),
+          input: contentInputReference(basicTextInput),
           value: 'this is also from a template',
         },
         {
           tag: 'number',
           uuid: randomUuid(),
+          input: contentInputReference(basicNumberInput),
           value: 0,
         },
-      ],
+        {
+          tag: 'object',
+          uuid: randomUuid(),
+          input: contentInputReference(cardInput),
+          value: {
+            title: {
+              tag: 'text',
+              uuid: randomUuid(),
+              value: 'Title',
+            },
+            description: {
+              tag: 'text',
+              uuid: randomUuid(),
+              value: 'Description',
+            },
+          },
+        },
+      ].map(toFlat),
     }),
   },
 })
 
+const inputLibrary = {
+  pageInput,
+  basicNumberInput,
+  cardInput,
+  basicTextInput: basicTextInput,
+}
+
+// TODO algorithm that adds uuids
 const contentTree = {
   tag: 'object',
   uuid: randomUuid(),
@@ -124,6 +175,16 @@ const contentTree = {
       tag: 'text',
       uuid: randomUuid(),
       value: 'Description',
+    },
+    referencedText: {
+      tag: 'text',
+      uuid: randomUuid(),
+      input: {
+        tag: 'reference-input',
+        uuid: randomUuid(),
+        inputUuid: inputLibrary.basicTextInput.uuid,
+      },
+      value: 'Referenced text value ',
     },
     paddingTop: {
       tag: 'number',
@@ -153,16 +214,19 @@ const contentTree = {
         {
           tag: 'text',
           uuid: randomUuid(),
+          input: contentInputReference(basicTextInput),
           value: 'Item 1',
         },
         {
           tag: 'text',
           uuid: randomUuid(),
+          input: contentInputReference(basicTextInput),
           value: 'Item 2',
         },
         {
           tag: 'number',
           uuid: randomUuid(),
+          input: contentInputReference(basicNumberInput),
           value: 100,
         },
       ],
@@ -170,12 +234,25 @@ const contentTree = {
   },
 }
 
-const rootUuid = contentTree.uuid
-const defaultContent: ContentStoreTmp = toStore(contentTree)
+const toInputMap = (library: Record<string, ContentInput>): InputMap => ({
+  tag: 'content-input-store',
+  data: Object.fromEntries(
+    Object.entries(library).map(([_key, value]) => [value.uuid, value]),
+  ),
+})
 
-const store: EditorStore = createBinder(
+const rootUuid = contentTree.uuid
+const defaultContent: FlatContent = toFlat(contentTree)
+const defaultInput: InputMap = toInputMap(inputLibrary)
+
+const contentStore: ContentStore = createBinder(
   new Y.Doc().getMap('content'),
   defaultContent,
+)
+
+const contentInputStore: InputStore = createBinder(
+  new Y.Doc().getMap('contentInput'),
+  defaultInput,
 )
 
 export const YjsEditor = () => {
@@ -201,28 +278,29 @@ export const YjsEditor = () => {
           Editor
         </Typography>
         <Editor
-          store={store}
-          schema={objectSchema}
+          store={contentStore}
+          inputStore={contentInputStore}
+          schema={inputLibrary.pageInput}
           rootUuid={rootUuid}
         />
       </Paper>
-      <ContentJsonView store={store} />
+      <ContentJsonView store={contentStore} />
     </Box>
   )
 }
 
 const ContentJsonView: FunctionComponent<{
-  store: EditorStore
+  store: ContentStore
 }> = (props) => {
   const { store } = props
   return (
-    <StoreContextProvider store={store}>
+    <ContentYjsStoreContextProvider store={store}>
       <ContentJsonViewWithContext />
-    </StoreContextProvider>
+    </ContentYjsStoreContextProvider>
   )
 }
 
-const selectAll = (state: ContentStoreTmp) => state
+const selectAll = (state: FlatContent) => state
 
 const ContentJsonViewWithContext = () => {
   const state = useSelector(selectAll)
@@ -258,7 +336,7 @@ const ContentJsonViewWithContext = () => {
             The data can be transformed into a tree structure, which can be
             easier to work with:
           </Typography>
-          <JsonView data={toTree(state, rootUuid)} />
+          <JsonView data={toTree(state)} />
         </AccordionDetails>
       </Accordion>
 
@@ -275,7 +353,7 @@ const ContentJsonViewWithContext = () => {
             The tree-representation can be further simplified by recursively
             extracting the value:
           </Typography>
-          <JsonView data={toValueOnlyTree(toTree(state, rootUuid))} />
+          <JsonView data={toValueOnlyTree(toTree(state))} />
         </AccordionDetails>
       </Accordion>
     </Stack>

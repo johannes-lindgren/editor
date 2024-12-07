@@ -1,6 +1,7 @@
 # ROADMAP
 
-This is the plan...
+This is what needs to be included in the PoC
 
-- Reference the input from the component. This will allow you to create unstructured content, just for the visuals.
-- If you render two forms side-by-side, are they synced?
+- [ ] Reference the input from the component.
+- [ ] Validation
+- [ ] Extract all inputs into separate modules, so that they are self-contained and it's easy to add new ones
