@@ -83,6 +83,7 @@ export const MenuItem = styled(BaseMenuItem)(
   border-radius: 8px;
   cursor: default;
   user-select: none;
+  transition: all 150ms ease;
 
   &:last-of-type {
     border-bottom: none;

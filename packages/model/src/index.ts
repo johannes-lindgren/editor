@@ -38,7 +38,7 @@ export type ContentInputReference = {
   inputUuid: Uuid
 }
 
-export const contentInputReference = (
+export const inputRef = (
   contentInput: ContentInput,
 ): ContentInputReference => ({
   tag: 'reference-input',
@@ -230,7 +230,7 @@ export type OneOfContentInput = {
   tag: 'one-of-input'
   uuid: Uuid
   label?: string
-  options: ContentInput[]
+  options: FlatContent[]
 }
 
 export const oneOfInput = (
@@ -251,6 +251,7 @@ export type Content =
   | ObjectContent
   | ArrayContent
   | PrimitiveContent
+  | OneOfContent
 
 export type ContentInput =
   | TextContentInput
@@ -344,10 +345,9 @@ export const toFlat = (content: ContentTree): FlatContent => {
     case 'one-of':
       const child = content.value
       const store = toFlat(child)
-      Object.assign(result, store)
+      Object.assign(result, store.data)
       result[content.uuid] = {
-        tag: 'one-of',
-        uuid: content.uuid,
+        ...content,
         value: {
           tag: 'reference',
           uuid: randomUuid(),
@@ -375,8 +375,7 @@ export const toFlat = (content: ContentTree): FlatContent => {
       break
     case 'array':
       result[content.uuid] = {
-        tag: 'array',
-        uuid: content.uuid,
+        ...content,
         value: content.value.map((child) => {
           const store = toFlat(child)
           Object.assign(result, store.data)
@@ -412,6 +411,11 @@ export const toTree = (store: FlatContent): ContentTree => {
       return content
     case 'primitive':
       return content
+    case 'one-of':
+      return {
+        ...content,
+        value: toTree({ ...store, rootUuid: content.value.valueUuid }),
+      }
     case 'object':
       return {
         ...content,
@@ -425,8 +429,7 @@ export const toTree = (store: FlatContent): ContentTree => {
       }
     case 'array':
       return {
-        tag: 'array',
-        uuid: content.uuid,
+        ...content,
         value: content.value.map((ref) =>
           toTree({ ...store, rootUuid: ref.valueUuid }),
         ),
@@ -455,6 +458,8 @@ export const toValueOnlyTree = (content: ContentTree): ValueOnlyTree => {
       )
     case 'array':
       return content.value.map(toValueOnlyTree)
+    case 'one-of':
+      return toValueOnlyTree(content.value)
     default:
       // TODO of course, we're not going to keep any exceptions in the final version
       throw new Error('Unknown tag')

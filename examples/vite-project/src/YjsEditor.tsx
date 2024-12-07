@@ -16,7 +16,7 @@ import {
   oneOfInput,
   primitiveInput,
   FlatContent,
-  contentInputReference,
+  inputRef,
   ContentInput,
   InputMap,
 } from '@editor/model'
@@ -63,6 +63,61 @@ const cardInput = objectInput({
   },
 })
 
+const numberOrStringInput = oneOfInput({
+  label: 'number or string',
+  options: [
+    {
+      tag: 'number',
+      uuid: randomUuid(),
+      input: inputRef(basicNumberInput),
+      value: 123,
+    },
+    {
+      tag: 'text',
+      uuid: randomUuid(),
+      input: inputRef(basicTextInput),
+      value: 'this is also from a template',
+    },
+  ].map(toFlat),
+})
+
+const alignLeftInput = primitiveInput({
+  label: 'Left',
+  value: 'left',
+})
+const alignCenterInput = primitiveInput({
+  label: 'Center',
+  value: 'center',
+})
+const alignRightInput = primitiveInput({
+  label: 'Right',
+  value: 'right',
+})
+
+const alignInput = oneOfInput({
+  label: 'Alignment',
+  options: [
+    {
+      tag: 'primitive',
+      uuid: randomUuid(),
+      input: inputRef(alignLeftInput),
+      value: 'left',
+    },
+    {
+      tag: 'primitive',
+      uuid: randomUuid(),
+      input: inputRef(alignCenterInput),
+      value: 'center',
+    },
+    {
+      tag: 'primitive',
+      uuid: randomUuid(),
+      input: inputRef(alignRightInput),
+      value: 'right',
+    },
+  ].map(toFlat),
+})
+
 const pageInput = objectInput({
   fields: {
     type: primitiveInput({
@@ -75,23 +130,12 @@ const pageInput = objectInput({
     description: textInput({
       label: 'Description',
     }),
-    referencedText: contentInputReference(basicTextInput),
+    numberOrString: inputRef(numberOrStringInput),
+    referencedText: inputRef(basicTextInput),
     paddingTop: numberInput({
       label: 'Padding Top',
     }),
-    align: oneOfInput({
-      label: 'Alignment',
-      options: [
-        primitiveInput({
-          label: 'Left',
-          value: 'left',
-        }),
-        primitiveInput({
-          label: 'Center',
-          value: 'center',
-        }),
-      ],
-    }),
+    align: alignInput,
     body: objectInput({
       fields: {
         title: textInput({
@@ -107,25 +151,25 @@ const pageInput = objectInput({
         {
           tag: 'text',
           uuid: randomUuid(),
-          input: contentInputReference(basicTextInput),
+          input: inputRef(basicTextInput),
           value: 'this is from a template',
         },
         {
           tag: 'text',
           uuid: randomUuid(),
-          input: contentInputReference(basicTextInput),
+          input: inputRef(basicTextInput),
           value: 'this is also from a template',
         },
         {
           tag: 'number',
           uuid: randomUuid(),
-          input: contentInputReference(basicNumberInput),
+          input: inputRef(basicNumberInput),
           value: 0,
         },
         {
           tag: 'object',
           uuid: randomUuid(),
-          input: contentInputReference(cardInput),
+          input: inputRef(cardInput),
           value: {
             title: {
               tag: 'text',
@@ -149,6 +193,11 @@ const inputLibrary = {
   basicNumberInput,
   cardInput,
   basicTextInput: basicTextInput,
+  numberOrStringInput,
+  alignInput,
+  alignLeftInput,
+  alignCenterInput,
+  alignRightInput,
 }
 
 // TODO algorithm that adds uuids
@@ -162,9 +211,15 @@ const contentTree = {
       value: 'Page',
     },
     align: {
-      tag: 'primitive',
+      tag: 'one-of',
       uuid: randomUuid(),
-      value: 'left',
+      input: inputRef(inputLibrary.alignInput),
+      value: {
+        tag: 'primitive',
+        uuid: randomUuid(),
+        input: inputRef(inputLibrary.alignLeftInput),
+        value: 'left',
+      },
     },
     title: {
       tag: 'text',
@@ -176,14 +231,21 @@ const contentTree = {
       uuid: randomUuid(),
       value: 'Description',
     },
+    numberOrString: {
+      tag: 'one-of',
+      uuid: randomUuid(),
+      input: inputRef(inputLibrary.numberOrStringInput),
+      value: {
+        tag: 'text',
+        uuid: randomUuid(),
+        input: inputRef(inputLibrary.basicTextInput),
+        value: 'Number or string',
+      },
+    },
     referencedText: {
       tag: 'text',
       uuid: randomUuid(),
-      input: {
-        tag: 'reference-input',
-        uuid: randomUuid(),
-        inputUuid: inputLibrary.basicTextInput.uuid,
-      },
+      input: inputRef(inputLibrary.basicTextInput),
       value: 'Referenced text value ',
     },
     paddingTop: {
@@ -214,19 +276,19 @@ const contentTree = {
         {
           tag: 'text',
           uuid: randomUuid(),
-          input: contentInputReference(basicTextInput),
+          input: inputRef(basicTextInput),
           value: 'Item 1',
         },
         {
           tag: 'text',
           uuid: randomUuid(),
-          input: contentInputReference(basicTextInput),
+          input: inputRef(basicTextInput),
           value: 'Item 2',
         },
         {
           tag: 'number',
           uuid: randomUuid(),
-          input: contentInputReference(basicNumberInput),
+          input: inputRef(basicNumberInput),
           value: 100,
         },
       ],
@@ -265,10 +327,12 @@ export const YjsEditor = () => {
         gap: 2,
       }}
     >
+      <ContentJsonView store={contentStore} />
       <Paper
         sx={{
           borderRadius: 2,
           p: 2,
+          flex: 1,
         }}
       >
         <Typography
@@ -284,7 +348,6 @@ export const YjsEditor = () => {
           rootUuid={rootUuid}
         />
       </Paper>
-      <ContentJsonView store={contentStore} />
     </Box>
   )
 }

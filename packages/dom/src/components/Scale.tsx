@@ -51,22 +51,19 @@ export const Scale: FunctionComponent<{
     }
 
     const handleTransitionEnd = () => {
-      console.log('transition end')
       callback()
     }
 
     const resizeObserver = new ResizeObserver(callback)
     callback()
 
-    // rootEl.current.addEventListener('transitionend', handleTransitionEnd)
+    rootEl.current.addEventListener('transitionend', handleTransitionEnd)
 
     // Start observing
-    console.log('observing', rootEl.current)
-    // resizeObserver.observe(rootEl.current)
+    resizeObserver.observe(rootEl.current)
 
     return () => {
       // Cleanup on unmount
-      console.log('disc')
       resizeObserver.disconnect()
       rootEl.current?.removeEventListener('transitionend', handleTransitionEnd)
     }

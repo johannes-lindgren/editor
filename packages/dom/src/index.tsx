@@ -45,6 +45,8 @@ import {
   InputMap,
   FlatStore,
   toFlat,
+  isOneOfContent,
+  OneOfContentInput,
 } from '@editor/model'
 import {
   Label,
@@ -408,59 +410,61 @@ const NumberContentInputView: FunctionComponent<{
   )
 })
 
-// const OneOfInputView: FunctionComponent<{
-//   schema: OneOfContentInput
-//   uuid: ContentUuid
-// }> = memo((props) => {
-//   const { schema, uuid } = props
-//   const selectByUuid = useSelectByUuid(uuid)
-//   const content = useSelector(selectByUuid)
-//   const inputId = useId()
-//   const helperTextId = useId()
-//   const update = useUpdater()
-//   const handleInput: FormEventHandler<
-//     HTMLInputElement | HTMLTextAreaElement
-//   > = (e) => {
-//     // // Must save in a variable because e will become destroyed after the event handler finishes,
-//     // //  and the producer callback function might be called later
-//     // const value = e.currentTarget.value
-//     // update((draft) => {
-//     //   const currentContent = draft.data[uuid]
-//     //   if (!isOneOfContent(currentContent)) {
-//     //     return
-//     //   }
-//     //   draft.data[uuid] = {
-//     //     ...currentContent,
-//     //     value,
-//     //   }
-//     // })
-//   }
-//
-//   if (content === undefined) {
-//     return <ContentNotFoundView uuid={uuid} />
-//   }
-//
-//   if (!isOneOfContent(content)) {
-//     return (
-//       <UnknownContentView
-//         content={content}
-//         schema={schema}
-//       />
-//     )
-//   }
-//
-//   return (
-//     <FormControl>
-//       {schema.label && <Label>{schema.label}</Label>}
-//       <Select defaultValue={10}>
-//         <Option value={10}>Documentation</Option>
-//         {schema.options.map((option) => (
-//           <Option>{option.label}</Option>
-//         ))}
-//       </Select>
-//     </FormControl>
-//   )
-// })
+const OneOfInputView: FunctionComponent<{
+  schema: OneOfContentInput
+  uuid: Uuid
+}> = memo((props) => {
+  const { schema, uuid } = props
+  const selectByUuid = useSelectByUuid(uuid)
+  const content = useSelector(selectByUuid)
+  const inputId = useId()
+  const helperTextId = useId()
+  const update = useUpdater()
+
+  const handleAdd = (content: FlatContent) => {
+    update((draft) => {
+      const currentContent = draft.data[uuid]
+      if (!isOneOfContent(currentContent)) {
+        return
+      }
+
+      Object.assign(draft.data, content.data)
+      currentContent.value = {
+        tag: 'reference',
+        uuid: randomUuid(),
+        valueUuid: content.rootUuid,
+      }
+    })
+  }
+
+  if (content === undefined) {
+    return <ContentNotFoundView uuid={uuid} />
+  }
+
+  if (!isOneOfContent(content)) {
+    return (
+      <UnknownContentView
+        content={content}
+        schema={schema}
+      />
+    )
+  }
+
+  return (
+    <FormControl>
+      <Stack gap={1}>
+        {schema.label && <Label>{schema.label}</Label>}
+        <ContentInputViewReferencedSchema uuid={content.value.valueUuid} />
+        <SelectContentFromTemplateView
+          templates={schema.options}
+          onChange={handleAdd}
+        >
+          Change
+        </SelectContentFromTemplateView>
+      </Stack>
+    </FormControl>
+  )
+})
 
 const ObjectContentInputView: FunctionComponent<{
   schema: ObjectContentInput
@@ -535,6 +539,22 @@ const ArrayContentInputView: FunctionComponent<{
     )
   }
 
+  const handleAdd = (content: FlatContent) => {
+    update((draft) => {
+      const currentContent = draft.data[uuid]
+      if (!isArrayContent(currentContent)) {
+        return
+      }
+
+      Object.assign(draft.data, content.data)
+      currentContent.value.push({
+        tag: 'reference',
+        uuid: randomUuid(),
+        valueUuid: content.rootUuid,
+      })
+    })
+  }
+
   const createHandleMenuClick = (contentTemplate: FlatContent) => {
     return () => {
       update((draft) => {
@@ -569,42 +589,68 @@ const ArrayContentInputView: FunctionComponent<{
           uuid={childContent.valueUuid}
         />
       ))}
-      <Dropdown
-        open={isOpen}
-        onOpenChange={(_, isOpen) => setIsOpen(isOpen)}
+      <SelectContentFromTemplateView
+        templates={schema.items}
+        onChange={handleAdd}
       >
-        <MenuButton>Add</MenuButton>
-        <Menu
-          slots={{
-            listbox: AnimatedListbox,
-          }}
-          onTransitionEnd={() => {
-            setTransitionEndCounter((count) => count + 1)
-          }}
-        >
-          {schema.items.map((template, index) => (
-            <Fragment key={template.rootUuid}>
-              {index !== 0 && <Divider sx={{ my: 1 }} />}
-              <MenuItem
-                onClick={createHandleMenuClick(template)}
-                sx={{
-                  width: 200,
-                }}
-              >
-                <Scale
-                  scale={2 / 3}
-                  dependencies={[transitionEndCounter]}
-                >
-                  <ContentPreview template={template} />
-                </Scale>
-              </MenuItem>
-            </Fragment>
-          ))}
-        </Menu>
-      </Dropdown>
+        Add
+      </SelectContentFromTemplateView>
     </Stack>
   )
 })
+
+const SelectContentFromTemplateView: FunctionComponent<{
+  templates: FlatContent[]
+  onChange: (content: FlatContent) => void
+  children?: ReactNode
+}> = (props) => {
+  const { templates, onChange, children } = props
+  const [isOpen, setIsOpen] = useState(false)
+  const [transitionEndCounter, setTransitionEndCounter] = useState(0)
+
+  const createHandleMenuClick = (contentTemplate: FlatContent) => {
+    return () => {
+      onChange(cloneContent(contentTemplate))
+    }
+  }
+
+  return (
+    <Dropdown
+      open={isOpen}
+      onOpenChange={(_, isOpen) => setIsOpen(isOpen)}
+    >
+      <MenuButton>{children}</MenuButton>
+      <Menu
+        slots={{
+          listbox: AnimatedListbox,
+        }}
+        onTransitionEnd={() => {
+          setTransitionEndCounter((count) => count + 1)
+        }}
+      >
+        {templates.map((template, index) => (
+          <Fragment key={template.rootUuid}>
+            {index !== 0 && <Divider sx={{ my: 1 }} />}
+            <MenuItem
+              onClick={createHandleMenuClick(template)}
+              sx={{
+                width: 200,
+                p: 0,
+              }}
+            >
+              <Scale
+                scale={3 / 4}
+                dependencies={[transitionEndCounter]}
+              >
+                <ContentPreview template={template} />
+              </Scale>
+            </MenuItem>
+          </Fragment>
+        ))}
+      </Menu>
+    </Dropdown>
+  )
+}
 
 const ContentPreview: FunctionComponent<{
   template: FlatContent
@@ -633,10 +679,13 @@ export const ContentInputViewReferencedSchema: FunctionComponent<{
 }> = memo((props) => {
   const { uuid } = props
   const content = useContentByUuid(uuid)
-  const inputUuid = content?.input?.inputUuid ?? ''
-  const contentInput = useContentInputByUuid(inputUuid)
+  const inputUuid = content?.input?.inputUuid
+  const contentInput = useContentInputByUuid(inputUuid ?? '')
   if (content === undefined) {
     return <ContentNotFoundView uuid={uuid} />
+  }
+  if (inputUuid === undefined) {
+    return `inputUuid on content ${JSON.stringify(uuid)} is undefined`
   }
   if (contentInput === undefined) {
     return <InputNotFoundView uuid={inputUuid} />
@@ -670,12 +719,12 @@ export const ContentInputView: FunctionComponent<{
         />
       )
     case 'one-of-input':
-      // TODO
-      return 'TODO: oneOf'
-    // <OneOfInputView
-    //   schema={schema}
-    //   uuid={uuid}
-    // />
+      return (
+        <OneOfInputView
+          schema={schema}
+          uuid={uuid}
+        />
+      )
     case 'object-input':
       return (
         <ObjectContentInputView
