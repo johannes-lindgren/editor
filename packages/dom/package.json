@@ -1,0 +1,33 @@
+{
+  "name": "@editor/dom",
+  "version": "1.0.0",
+  "description": "",
+  "main": "src/index.tsx",
+  "dependencies": {
+    "@editor/model": "workspace:*",
+    "@emotion/react": "^11.13.5",
+    "@emotion/styled": "^11.13.5",
+    "@mui/material": "^6.1.9",
+    "@mui/base": "^5.0.0-beta.63",
+    "@mui/system": "^6.1.9",
+    "immer": "^10.1.1",
+    "clsx": "^2.1.1",
+    "uuid": "^11.0.3",
+    "@mui/icons-material": "^6.1.9",
+    "reselect": "^5.1.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1"
+  },
+  "peerDependencies": {
+    "react": "^17.0.0 || ^18.0.0",
+    "react-dom": "^17.0.0 || ^18.0.0"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
