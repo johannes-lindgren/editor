@@ -366,7 +366,7 @@ const NumberContentInputView: FunctionComponent<{
   const inputId = useId()
   const helperTextId = useId()
   const update = useUpdater()
-  const handleInput = (e, value: number | null) => {
+  const handleInput = (_, value: number | null) => {
     // Must save in a variable because e will become destroyed after the event handler finishes,
     //  and the producer callback function might be called later
     if (value === null) {
