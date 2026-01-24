@@ -43,7 +43,12 @@ const Child = () => {
 
   switch (store.tag) {
     case 'initialized':
-      return <Initialized state={state} update={store.binder.update} />
+      return (
+        <Initialized
+          state={state}
+          update={store.binder.update}
+        />
+      )
     case 'uninitialized':
       console.log('loading')
       return <Loading onInitialize={handleInitialize} />
@@ -82,7 +87,10 @@ const Initialized: FunctionComponent<{
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <div>{state.title}</div>
-      <input value={state.title} onInput={handleTitleInput} />
+      <input
+        value={state.title}
+        onInput={handleTitleInput}
+      />
     </div>
   )
 }
