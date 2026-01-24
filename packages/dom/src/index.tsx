@@ -8,6 +8,7 @@ import {
   Typography,
 } from '@mui/material'
 import * as React from 'react'
+import { Add as AddIcon, SwapHoriz as SwapIcon } from '@mui/icons-material'
 import {
   createContext,
   FormEventHandler,
@@ -55,7 +56,7 @@ import {
 import { v4 as randomUuid } from 'uuid'
 import { createSelector } from 'reselect'
 import { Dropdown } from '@mui/base/Dropdown'
-import { Menu } from '@mui/base/Menu'
+import { Menu } from '@mui/base'
 
 type UpdateFn<T> = (draft: T) => void
 
@@ -454,7 +455,9 @@ const OneOfInputView: FunctionComponent<{
           <SelectContentFromTemplateView
             templates={schema.options}
             onChange={handleAdd}
-          />
+          >
+            <SwapIcon fontSize="inherit" />
+          </SelectContentFromTemplateView>
         </Box>
         <Box
           sx={{
@@ -593,12 +596,17 @@ const ArrayContentInputView: FunctionComponent<{
           uuid={childContent.valueUuid}
         />
       ))}
-      <SelectContentFromTemplateView
-        templates={schema.items}
-        onChange={handleAdd}
+      <Box
+        display="inherit"
+        justifyContent="center"
       >
-        Add
-      </SelectContentFromTemplateView>
+        <SelectContentFromTemplateView
+          templates={schema.items}
+          onChange={handleAdd}
+        >
+          <AddIcon fontSize="inherit" />
+        </SelectContentFromTemplateView>
+      </Box>
     </Stack>
   )
 })
@@ -661,7 +669,28 @@ const SelectContentFromTemplateView: FunctionComponent<{
       open={isOpen}
       onOpenChange={(_, isOpen) => setIsOpen(isOpen)}
     >
-      <MenuButton>{children}</MenuButton>
+      <MenuButton
+        sx={{
+          fontSize: (theme) => theme.typography.pxToRem(16),
+          minWidth: 'auto',
+          padding: '8px',
+          border: 1,
+          borderColor: 'divider',
+          borderRadius: 1,
+          backgroundColor: 'background.paper',
+          cursor: 'pointer',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transition: 'all 0.2s',
+          '&:hover': {
+            backgroundColor: 'action.hover',
+            borderColor: 'primary.main',
+          },
+        }}
+      >
+        {children}
+      </MenuButton>
       <SelectContentFromTemplateMenu
         templates={templates}
         onChange={onChange}
