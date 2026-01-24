@@ -1,12 +1,13 @@
 import {
   Alert,
+  AlertTitle,
+  Box,
+  Divider,
   FormControl,
   Stack,
   Typography,
-  Box,
-  AlertTitle,
-  Divider,
 } from '@mui/material'
+import * as React from 'react'
 import {
   createContext,
   FormEventHandler,
@@ -22,44 +23,36 @@ import {
   useSyncExternalStore,
 } from 'react'
 import {
-  ContentInput,
-  ObjectContentInput,
-  TextContentInput,
-  NumberContentInput,
-  Uuid,
-  isTextContent,
-  isNumberContent,
   ArrayContentInput,
-  isArrayContent,
-  isPrimitiveContent,
-  PrimitiveContentInput,
-  Content,
-  textInput,
-  numberInput,
-  primitiveInput,
-  objectInput,
-  arrayInput,
-  subStore,
   cloneContent,
+  Content,
+  ContentInput,
   FlatContent,
-  InputMap,
   FlatStore,
-  toFlat,
+  InputMap,
+  isArrayContent,
+  isNumberContent,
   isOneOfContent,
+  isPrimitiveContent,
+  isTextContent,
+  NumberContentInput,
+  ObjectContentInput,
   OneOfContentInput,
+  PrimitiveContentInput,
+  subStore,
+  TextContentInput,
+  Uuid,
 } from '@editor/model'
 import {
-  Label,
-  StyledInput,
-  CustomNumberInput,
   AnimatedListbox,
+  CustomNumberInput,
+  Label,
   MenuButton,
   MenuItem,
-  Button,
   Scale,
+  StyledInput,
 } from './components'
 import { v4 as randomUuid } from 'uuid'
-import * as React from 'react'
 import { createSelector } from 'reselect'
 import { Dropdown } from '@mui/base/Dropdown'
 import { Menu } from '@mui/base/Menu'
@@ -453,14 +446,25 @@ const OneOfInputView: FunctionComponent<{
   return (
     <FormControl>
       <Stack gap={1}>
-        {schema.label && <Label>{schema.label}</Label>}
-        <ContentInputViewReferencedSchema uuid={content.value.valueUuid} />
-        <SelectContentFromTemplateView
-          templates={schema.options}
-          onChange={handleAdd}
+        <Box
+          display="flex"
+          justifyContent="space-between"
         >
-          Change
-        </SelectContentFromTemplateView>
+          {schema.label && <Label>{schema.label}</Label>}
+          <SelectContentFromTemplateView
+            templates={schema.options}
+            onChange={handleAdd}
+          />
+        </Box>
+        <Box
+          sx={{
+            position: 'relative',
+            p: 2,
+            pt: 1.5,
+          }}
+        >
+          <ContentInputViewReferencedSchema uuid={content.value.valueUuid} />
+        </Box>
       </Stack>
     </FormControl>
   )
@@ -599,13 +603,11 @@ const ArrayContentInputView: FunctionComponent<{
   )
 })
 
-const SelectContentFromTemplateView: FunctionComponent<{
+const SelectContentFromTemplateMenu: FunctionComponent<{
   templates: FlatContent[]
   onChange: (content: FlatContent) => void
-  children?: ReactNode
 }> = (props) => {
-  const { templates, onChange, children } = props
-  const [isOpen, setIsOpen] = useState(false)
+  const { templates, onChange } = props
   const [transitionEndCounter, setTransitionEndCounter] = useState(0)
 
   const createHandleMenuClick = (contentTemplate: FlatContent) => {
