@@ -615,39 +615,55 @@ const SelectContentFromTemplateView: FunctionComponent<{
   }
 
   return (
+    <Menu
+      slots={{
+        listbox: AnimatedListbox,
+      }}
+      onTransitionEnd={() => {
+        setTransitionEndCounter((count) => count + 1)
+      }}
+    >
+      {templates.map((template, index) => (
+        <Fragment key={template.rootUuid}>
+          {index !== 0 && <Divider sx={{ my: 1 }} />}
+          <MenuItem
+            onClick={createHandleMenuClick(template)}
+            sx={{
+              width: 200,
+              p: 0,
+            }}
+          >
+            <Scale
+              scale={3 / 4}
+              dependencies={[transitionEndCounter]}
+            >
+              <ContentPreview template={template} />
+            </Scale>
+          </MenuItem>
+        </Fragment>
+      ))}
+    </Menu>
+  )
+}
+
+const SelectContentFromTemplateView: FunctionComponent<{
+  templates: FlatContent[]
+  onChange: (content: FlatContent) => void
+  children?: ReactNode
+}> = (props) => {
+  const { templates, onChange, children } = props
+  const [isOpen, setIsOpen] = useState(false)
+
+  return (
     <Dropdown
       open={isOpen}
       onOpenChange={(_, isOpen) => setIsOpen(isOpen)}
     >
       <MenuButton>{children}</MenuButton>
-      <Menu
-        slots={{
-          listbox: AnimatedListbox,
-        }}
-        onTransitionEnd={() => {
-          setTransitionEndCounter((count) => count + 1)
-        }}
-      >
-        {templates.map((template, index) => (
-          <Fragment key={template.rootUuid}>
-            {index !== 0 && <Divider sx={{ my: 1 }} />}
-            <MenuItem
-              onClick={createHandleMenuClick(template)}
-              sx={{
-                width: 200,
-                p: 0,
-              }}
-            >
-              <Scale
-                scale={3 / 4}
-                dependencies={[transitionEndCounter]}
-              >
-                <ContentPreview template={template} />
-              </Scale>
-            </MenuItem>
-          </Fragment>
-        ))}
-      </Menu>
+      <SelectContentFromTemplateMenu
+        templates={templates}
+        onChange={onChange}
+      />
     </Dropdown>
   )
 }

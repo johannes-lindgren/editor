@@ -49,12 +49,8 @@ import { JsonView } from './JsonView.tsx'
 // })
 // const inputs = [defaultTextInput]
 
-const basicTextInput = textInput({
-  label: 'Text',
-})
-const basicNumberInput = numberInput({
-  label: 'Number',
-})
+const basicTextInput = textInput({})
+const basicNumberInput = numberInput({})
 
 const cardInput = objectInput({
   fields: {
