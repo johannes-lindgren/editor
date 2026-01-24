@@ -12,10 +12,16 @@ export const Route = createRootRoute({
           padding: '1rem',
         }}
       >
-        <Link to="/examples/global-store" className="[&.active]:font-bold">
+        <Link
+          to="/examples/global-store"
+          className="[&.active]:font-bold"
+        >
           Global Store
         </Link>
-        <Link to="/examples/context-store" className="[&.active]:font-bold">
+        <Link
+          to="/examples/context-store"
+          className="[&.active]:font-bold"
+        >
           Context Store
         </Link>
       </div>
