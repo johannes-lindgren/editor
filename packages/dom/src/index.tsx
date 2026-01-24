@@ -8,29 +8,22 @@ import {
   Typography,
 } from '@mui/material'
 import * as React from 'react'
-import { Add as AddIcon, SwapHoriz as SwapIcon } from '@mui/icons-material'
 import {
-  createContext,
   FormEventHandler,
   Fragment,
   FunctionComponent,
   memo,
   ReactNode,
-  useCallback,
-  useContext,
   useId,
   useMemo,
   useState,
-  useSyncExternalStore,
 } from 'react'
+import { Add as AddIcon, SwapHoriz as SwapIcon } from '@mui/icons-material'
 import {
   ArrayContentInput,
   cloneContent,
-  Content,
   ContentInput,
   FlatContent,
-  FlatStore,
-  InputMap,
   isArrayContent,
   isNumberContent,
   isOneOfContent,
@@ -57,105 +50,18 @@ import { v4 as randomUuid } from 'uuid'
 import { createSelector } from 'reselect'
 import { Dropdown } from '@mui/base/Dropdown'
 import { Menu } from '@mui/base'
-
-type UpdateFn<T> = (draft: T) => void
-
-export type Store<T> = {
-  subscribe: (fn: (data: unknown) => void) => () => void
-  get: () => T
-  update: (fn: UpdateFn<T>) => void
-}
-
-export type ContentStore = Store<FlatContent>
-export type InputStore = Store<InputMap>
-
-const readOnlyStore = <T,>(data: T): Store<T> => ({
-  subscribe: () => () => {},
-  get: () => data,
-  update: () => {},
-})
-
-const ContentYjsStoreContext = createContext<ContentStore | undefined>(
-  undefined,
-)
-
-const ContentInputYjsStoreContext = createContext<InputStore | undefined>(
-  undefined,
-)
-
-export const ContentYjsStoreContextProvider: FunctionComponent<{
-  store: ContentStore
-  children: ReactNode
-}> = (props) => {
-  const { store, children } = props
-  return (
-    <ContentYjsStoreContext.Provider value={store}>
-      {children}
-    </ContentYjsStoreContext.Provider>
-  )
-}
-
-export const ContentInputYjsStoreContextProvider: FunctionComponent<{
-  store: InputStore
-  children: ReactNode
-}> = (props) => {
-  const { store, children } = props
-  return (
-    <ContentInputYjsStoreContext.Provider value={store}>
-      {children}
-    </ContentInputYjsStoreContext.Provider>
-  )
-}
-
-const useUpdater = () => {
-  const store = useContext(ContentYjsStoreContext)!
-  return store.update
-}
-
-export const useSelector = <Selection,>(
-  selector: (store: FlatContent) => Selection,
-): Selection => {
-  const store = useContext(ContentYjsStoreContext)!
-
-  const getSnapshot = useCallback(
-    () => selector(store.get()),
-    [store, selector],
-  )
-
-  return useSyncExternalStore(store.subscribe, getSnapshot)
-}
-
-export const useContentInputSelector = <Selection,>(
-  selector: (store: InputMap) => Selection,
-): Selection => {
-  const store = useContext(ContentInputYjsStoreContext)!
-
-  const getSnapshot = useCallback(
-    () => selector(store.get()),
-    [store, selector],
-  )
-
-  return useSyncExternalStore(store.subscribe, getSnapshot)
-}
-
-const useSelectByUuid = <T,>(uuid: Uuid) => {
-  return useCallback(
-    (store: FlatStore<T>) => {
-      return store.data[uuid]
-    },
-    [uuid],
-  )
-}
-
-const useContentByUuid = (uuid: Uuid) => {
-  const selectByUuid = useSelectByUuid<Content>(uuid)
-  return useSelector(selectByUuid)
-}
-
-const useContentInputByUuid = (uuid: Uuid) => {
-  const selectByUuid = useSelectByUuid<ContentInput>(uuid)
-  return useContentInputSelector(selectByUuid)
-}
+import {
+  ContentInputYjsStoreContextProvider,
+  ContentStore,
+  ContentYjsStoreContextProvider,
+  InputStore,
+  readOnlyStore,
+  useContentByUuid,
+  useContentInputByUuid,
+  useSelectByUuid,
+  useSelector,
+  useUpdater,
+} from './store.tsx'
 
 const JsonView: FunctionComponent<{ data: unknown }> = (props) => {
   const { data } = props
@@ -821,3 +727,5 @@ export const Editor: FunctionComponent<EditorProps> = (props) => {
     </ContentYjsStoreContextProvider>
   )
 }
+
+export * from './store.tsx'
