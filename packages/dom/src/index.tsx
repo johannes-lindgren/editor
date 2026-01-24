@@ -1,240 +1,72 @@
 import {
   Alert,
+  AlertTitle,
+  Box,
+  Divider,
   FormControl,
   Stack,
   Typography,
-  Box,
-  AlertTitle,
-  Divider,
 } from '@mui/material'
+import * as React from 'react'
 import {
-  createContext,
-  FormEventHandler,
   Fragment,
   FunctionComponent,
   memo,
   ReactNode,
-  useCallback,
-  useContext,
   useId,
   useMemo,
   useState,
-  useSyncExternalStore,
 } from 'react'
+import { Add as AddIcon, SwapHoriz as SwapIcon } from '@mui/icons-material'
 import {
-  ContentInput,
-  ObjectContentInput,
-  TextContentInput,
-  NumberContentInput,
-  Uuid,
-  isTextContent,
-  isNumberContent,
   ArrayContentInput,
-  isArrayContent,
-  isPrimitiveContent,
-  PrimitiveContentInput,
-  Content,
-  textInput,
-  numberInput,
-  primitiveInput,
-  objectInput,
-  arrayInput,
-  subStore,
   cloneContent,
+  ContentInput,
   FlatContent,
-  InputMap,
-  FlatStore,
-  toFlat,
+  isArrayContent,
   isOneOfContent,
   OneOfContentInput,
+  subStore,
+  Uuid,
 } from '@editor/model'
 import {
-  Label,
-  StyledInput,
-  CustomNumberInput,
   AnimatedListbox,
+  Label,
   MenuButton,
   MenuItem,
-  Button,
   Scale,
 } from './components'
 import { v4 as randomUuid } from 'uuid'
-import * as React from 'react'
 import { createSelector } from 'reselect'
 import { Dropdown } from '@mui/base/Dropdown'
-import { Menu } from '@mui/base/Menu'
+import { Menu } from '@mui/base'
+import {
+  ContentInputYjsStoreContextProvider,
+  ContentStore,
+  ContentYjsStoreContextProvider,
+  InputStore,
+  readOnlyStore,
+  useContentByUuid,
+  useContentInputByUuid,
+  useSelectByUuid,
+  useSelector,
+  useUpdater,
+} from './store.tsx'
+import {
+  ContentNotFoundView,
+  NumberContentInputView,
+  ObjectContentInputView,
+  PrimitiveContentInputView,
+  TextContentInputView,
+  UnknownContentView,
+  UnknownInputView,
+} from './Input'
 
-type UpdateFn<T> = (draft: T) => void
-
-export type Store<T> = {
-  subscribe: (fn: (data: unknown) => void) => () => void
-  get: () => T
-  update: (fn: UpdateFn<T>) => void
-}
-
-export type ContentStore = Store<FlatContent>
-export type InputStore = Store<InputMap>
-
-const readOnlyStore = <T,>(data: T): Store<T> => ({
-  subscribe: () => () => {},
-  get: () => data,
-  update: () => {},
-})
-
-const ContentYjsStoreContext = createContext<ContentStore | undefined>(
-  undefined,
-)
-
-const ContentInputYjsStoreContext = createContext<InputStore | undefined>(
-  undefined,
-)
-
-export const ContentYjsStoreContextProvider: FunctionComponent<{
-  store: ContentStore
-  children: ReactNode
-}> = (props) => {
-  const { store, children } = props
-  return (
-    <ContentYjsStoreContext.Provider value={store}>
-      {children}
-    </ContentYjsStoreContext.Provider>
-  )
-}
-
-export const ContentInputYjsStoreContextProvider: FunctionComponent<{
-  store: InputStore
-  children: ReactNode
-}> = (props) => {
-  const { store, children } = props
-  return (
-    <ContentInputYjsStoreContext.Provider value={store}>
-      {children}
-    </ContentInputYjsStoreContext.Provider>
-  )
-}
-
-const useUpdater = () => {
-  const store = useContext(ContentYjsStoreContext)!
-  return store.update
-}
-
-export const useSelector = <Selection,>(
-  selector: (store: FlatContent) => Selection,
-): Selection => {
-  const store = useContext(ContentYjsStoreContext)!
-
-  const getSnapshot = useCallback(
-    () => selector(store.get()),
-    [store, selector],
-  )
-
-  return useSyncExternalStore(store.subscribe, getSnapshot)
-}
-
-export const useContentInputSelector = <Selection,>(
-  selector: (store: InputMap) => Selection,
-): Selection => {
-  const store = useContext(ContentInputYjsStoreContext)!
-
-  const getSnapshot = useCallback(
-    () => selector(store.get()),
-    [store, selector],
-  )
-
-  return useSyncExternalStore(store.subscribe, getSnapshot)
-}
-
-const useSelectByUuid = <T,>(uuid: Uuid) => {
-  return useCallback(
-    (store: FlatStore<T>) => {
-      return store.data[uuid]
-    },
-    [uuid],
-  )
-}
-
-const useContentByUuid = (uuid: Uuid) => {
-  const selectByUuid = useSelectByUuid<Content>(uuid)
-  return useSelector(selectByUuid)
-}
-
-const useContentInputByUuid = (uuid: Uuid) => {
-  const selectByUuid = useSelectByUuid<ContentInput>(uuid)
-  return useContentInputSelector(selectByUuid)
-}
-
-const JsonView: FunctionComponent<{ data: unknown }> = (props) => {
-  const { data } = props
-  return (
-    <Box
-      component="pre"
-      sx={{
-        border: 1,
-        borderColor: 'divider',
-        borderRadius: 1,
-        px: 2,
-        py: 1,
-      }}
-    >
-      <Box component="code">{JSON.stringify(data, null, 2)}</Box>
-    </Box>
-  )
-}
-
-export const UnknownContentView: FunctionComponent<{
-  schema: ContentInput
-  content: unknown
-}> = memo((props) => {
-  const { schema, content } = props
-  return (
-    <Alert severity="error">
-      <AlertTitle>
-        The content does not adhere to the expected structure.
-      </AlertTitle>
-      <Typography>
-        The schema expects the content to be of the following structure:
-      </Typography>
-      <Stack>
-        <Typography variant="subtitle1">Schema:</Typography>
-        <JsonView data={schema} />
-        <Typography variant="subtitle1">Content:</Typography>
-        <JsonView data={content} />
-      </Stack>
-    </Alert>
-  )
-})
-
-export const UnknownInputView: FunctionComponent<{
-  schema: ContentInput
-}> = memo((props) => {
-  const { schema } = props
-  return (
-    <Alert severity="error">
-      <AlertTitle>Unknown input type</AlertTitle>
-      <Typography>
-        Cannot render the input because the input type is unknown.
-      </Typography>
-      <Stack>
-        <Typography variant="subtitle1">Schema:</Typography>
-        <JsonView data={schema} />
-      </Stack>
-    </Alert>
-  )
-})
-
-export const ContentNotFoundView: FunctionComponent<{
+export type ContentInputViewProps<Schema> = {
+  schema: Schema
   uuid: Uuid
-}> = memo((props) => {
-  const { uuid } = props
-  return (
-    <Alert severity="error">
-      <AlertTitle>Content not found</AlertTitle>
-      <Typography>
-        Could not find content by uuid {JSON.stringify(uuid)}
-      </Typography>
-    </Alert>
-  )
-})
+  ContentInputView?: FunctionComponent<ContentInputViewProps<ContentInput>>
+}
 
 export const InputNotFoundView: FunctionComponent<{
   uuid: Uuid
@@ -264,157 +96,10 @@ export const MissingPropertyView: FunctionComponent<{
   )
 })
 
-const PrimitiveContentInputView: FunctionComponent<{
-  schema: PrimitiveContentInput
-  uuid: Uuid
-}> = memo((props) => {
-  const { schema, uuid } = props
-  const content = useContentByUuid(uuid)
-  const inputId = useId()
-  const helperTextId = useId()
-
-  if (content === undefined) {
-    return <ContentNotFoundView uuid={uuid} />
-  }
-
-  if (!isPrimitiveContent(content)) {
-    return (
-      <UnknownContentView
-        content={content}
-        schema={schema}
-      />
-    )
-  }
-
-  return (
-    <FormControl>
-      {schema.label && <Label>{schema.label}</Label>}
-      <StyledInput
-        disabled
-        label={schema.label}
-        id={inputId}
-        aria-describedby={helperTextId}
-        value={content.value}
-      />
-    </FormControl>
-  )
-})
-
-const TextContentInputView: FunctionComponent<{
-  schema: TextContentInput
-  uuid: Uuid
-}> = memo((props) => {
-  const { schema, uuid } = props
-  const content = useContentByUuid(uuid)
-  const inputId = useId()
-  const helperTextId = useId()
-  const update = useUpdater()
-  const handleInput: FormEventHandler<
-    HTMLInputElement | HTMLTextAreaElement
-  > = (e) => {
-    // Must save in a variable because e will become destroyed after the event handler finishes,
-    //  and the producer callback function might be called later
-    const value = e.currentTarget.value
-    update((draft) => {
-      const currentContent = draft.data[uuid]
-      if (!isTextContent(currentContent)) {
-        return
-      }
-      draft.data[uuid] = {
-        ...currentContent,
-        value,
-      }
-    })
-  }
-
-  if (content === undefined) {
-    return <ContentNotFoundView uuid={uuid} />
-  }
-
-  if (!isTextContent(content)) {
-    return (
-      <UnknownContentView
-        content={content}
-        schema={schema}
-      />
-    )
-  }
-
-  return (
-    <FormControl>
-      {schema.label && <Label>{schema.label}</Label>}
-      <StyledInput
-        sx={{
-          flex: 1,
-        }}
-        label={schema.label}
-        id={inputId}
-        aria-describedby={helperTextId}
-        value={content.value}
-        onChange={handleInput}
-      />
-    </FormControl>
-  )
-})
-
-const NumberContentInputView: FunctionComponent<{
-  schema: NumberContentInput
-  uuid: Uuid
-}> = memo((props) => {
-  const { schema, uuid } = props
-  const content = useContentByUuid(uuid)
-  const inputId = useId()
-  const helperTextId = useId()
-  const update = useUpdater()
-  const handleInput = (_, value: number | null) => {
-    // Must save in a variable because e will become destroyed after the event handler finishes,
-    //  and the producer callback function might be called later
-    if (value === null) {
-      return
-    }
-    update((draft) => {
-      const currentContent = draft.data[uuid]
-      if (!isNumberContent(currentContent)) {
-        return
-      }
-      draft.data[uuid] = {
-        ...currentContent,
-        value,
-      }
-    })
-  }
-
-  if (content === undefined) {
-    return <ContentNotFoundView uuid={uuid} />
-  }
-
-  if (!isNumberContent(content)) {
-    return (
-      <UnknownContentView
-        content={content}
-        schema={schema}
-      />
-    )
-  }
-
-  return (
-    <FormControl>
-      {schema.label && <Label>{schema.label}</Label>}
-      <CustomNumberInput
-        id={inputId}
-        aria-describedby={helperTextId}
-        value={content.value}
-        onChange={handleInput}
-      />
-    </FormControl>
-  )
-})
-
-const OneOfInputView: FunctionComponent<{
-  schema: OneOfContentInput
-  uuid: Uuid
-}> = memo((props) => {
-  const { schema, uuid } = props
+const OneOfInputView: FunctionComponent<
+  ContentInputViewProps<OneOfContentInput>
+> = memo((props) => {
+  const { schema, uuid, ContentInputView } = props
   const selectByUuid = useSelectByUuid(uuid)
   const content = useSelector(selectByUuid)
   const inputId = useId()
@@ -453,56 +138,32 @@ const OneOfInputView: FunctionComponent<{
   return (
     <FormControl>
       <Stack gap={1}>
-        {schema.label && <Label>{schema.label}</Label>}
-        <ContentInputViewReferencedSchema uuid={content.value.valueUuid} />
-        <SelectContentFromTemplateView
-          templates={schema.options}
-          onChange={handleAdd}
+        <Box
+          display="flex"
+          justifyContent="space-between"
         >
-          Change
-        </SelectContentFromTemplateView>
+          {schema.label && <Label>{schema.label}</Label>}
+          <SelectContentFromTemplateView
+            templates={schema.options}
+            onChange={handleAdd}
+          >
+            <SwapIcon fontSize="inherit" />
+          </SelectContentFromTemplateView>
+        </Box>
+        <Box
+          sx={{
+            position: 'relative',
+            p: 2,
+            pt: 1.5,
+          }}
+        >
+          <ContentInputViewReferencedSchema
+            uuid={content.value.valueUuid}
+            ContentInputView={ContentInputView}
+          />
+        </Box>
       </Stack>
     </FormControl>
-  )
-})
-
-const ObjectContentInputView: FunctionComponent<{
-  schema: ObjectContentInput
-  uuid: Uuid
-}> = memo((props) => {
-  const { schema, uuid } = props
-
-  const content = useContentByUuid(uuid)
-
-  if (content === undefined) {
-    return <ContentNotFoundView uuid={uuid} />
-  }
-
-  return (
-    <Stack
-      sx={{
-        gap: 2,
-        p: 2,
-        border: 1,
-        borderColor: 'divider',
-        borderRadius: 1,
-      }}
-    >
-      <Label>Object</Label>
-      {Object.entries(schema.fields).map(([key, field]) => {
-        const childContent = content.value[key]
-        if (!childContent) {
-          return <MissingPropertyView propertyName={key} />
-        }
-        return (
-          <ContentInputView
-            schema={field}
-            key={key}
-            uuid={childContent.valueUuid}
-          />
-        )
-      })}
-    </Stack>
   )
 })
 
@@ -514,17 +175,13 @@ const selectContentStoreByUuid = createSelector(
   (store: FlatContent, uuid: Uuid) => subStore(store, uuid),
 )
 
-const ArrayContentInputView: FunctionComponent<{
-  schema: ArrayContentInput
-  uuid: Uuid
-}> = memo((props) => {
-  const { schema, uuid } = props
+const ArrayContentInputView: FunctionComponent<
+  ContentInputViewProps<ArrayContentInput>
+> = memo((props) => {
+  const { schema, uuid, ContentInputView } = props
 
   const update = useUpdater()
   const content = useContentByUuid(uuid)
-
-  const [isOpen, setIsOpen] = useState(false)
-  const [transitionEndCounter, setTransitionEndCounter] = useState(0)
 
   if (content === undefined) {
     return <ContentNotFoundView uuid={uuid} />
@@ -587,25 +244,29 @@ const ArrayContentInputView: FunctionComponent<{
         <ContentInputViewReferencedSchema
           key={childContent.uuid}
           uuid={childContent.valueUuid}
+          ContentInputView={ContentInputView}
         />
       ))}
-      <SelectContentFromTemplateView
-        templates={schema.items}
-        onChange={handleAdd}
+      <Box
+        display="inherit"
+        justifyContent="center"
       >
-        Add
-      </SelectContentFromTemplateView>
+        <SelectContentFromTemplateView
+          templates={schema.items}
+          onChange={handleAdd}
+        >
+          <AddIcon fontSize="inherit" />
+        </SelectContentFromTemplateView>
+      </Box>
     </Stack>
   )
 })
 
-const SelectContentFromTemplateView: FunctionComponent<{
+const SelectContentFromTemplateMenu: FunctionComponent<{
   templates: FlatContent[]
   onChange: (content: FlatContent) => void
-  children?: ReactNode
 }> = (props) => {
-  const { templates, onChange, children } = props
-  const [isOpen, setIsOpen] = useState(false)
+  const { templates, onChange } = props
   const [transitionEndCounter, setTransitionEndCounter] = useState(0)
 
   const createHandleMenuClick = (contentTemplate: FlatContent) => {
@@ -615,39 +276,76 @@ const SelectContentFromTemplateView: FunctionComponent<{
   }
 
   return (
+    <Menu
+      slots={{
+        listbox: AnimatedListbox,
+      }}
+      onTransitionEnd={() => {
+        setTransitionEndCounter((count) => count + 1)
+      }}
+    >
+      {templates.map((template, index) => (
+        <Fragment key={template.rootUuid}>
+          {index !== 0 && <Divider sx={{ my: 1 }} />}
+          <MenuItem
+            onClick={createHandleMenuClick(template)}
+            sx={{
+              width: 200,
+              p: 0,
+            }}
+          >
+            <Scale
+              scale={3 / 4}
+              dependencies={[transitionEndCounter]}
+            >
+              <ContentPreview template={template} />
+            </Scale>
+          </MenuItem>
+        </Fragment>
+      ))}
+    </Menu>
+  )
+}
+
+const SelectContentFromTemplateView: FunctionComponent<{
+  templates: FlatContent[]
+  onChange: (content: FlatContent) => void
+  children?: ReactNode
+}> = (props) => {
+  const { templates, onChange, children } = props
+  const [isOpen, setIsOpen] = useState(false)
+
+  return (
     <Dropdown
       open={isOpen}
       onOpenChange={(_, isOpen) => setIsOpen(isOpen)}
     >
-      <MenuButton>{children}</MenuButton>
-      <Menu
-        slots={{
-          listbox: AnimatedListbox,
-        }}
-        onTransitionEnd={() => {
-          setTransitionEndCounter((count) => count + 1)
+      <MenuButton
+        sx={{
+          fontSize: (theme) => theme.typography.pxToRem(16),
+          minWidth: 'auto',
+          padding: '8px',
+          border: 1,
+          borderColor: 'divider',
+          borderRadius: 1,
+          backgroundColor: 'background.paper',
+          cursor: 'pointer',
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transition: 'all 0.2s',
+          '&:hover': {
+            backgroundColor: 'action.hover',
+            borderColor: 'primary.main',
+          },
         }}
       >
-        {templates.map((template, index) => (
-          <Fragment key={template.rootUuid}>
-            {index !== 0 && <Divider sx={{ my: 1 }} />}
-            <MenuItem
-              onClick={createHandleMenuClick(template)}
-              sx={{
-                width: 200,
-                p: 0,
-              }}
-            >
-              <Scale
-                scale={3 / 4}
-                dependencies={[transitionEndCounter]}
-              >
-                <ContentPreview template={template} />
-              </Scale>
-            </MenuItem>
-          </Fragment>
-        ))}
-      </Menu>
+        {children}
+      </MenuButton>
+      <SelectContentFromTemplateMenu
+        templates={templates}
+        onChange={onChange}
+      />
     </Dropdown>
   )
 }
@@ -676,8 +374,9 @@ const ContentPreview: FunctionComponent<{
 
 export const ContentInputViewReferencedSchema: FunctionComponent<{
   uuid: Uuid
+  ContentInputView: FunctionComponent<ContentInputViewProps<ContentInput>>
 }> = memo((props) => {
-  const { uuid } = props
+  const { uuid, ContentInputView = ContentInputViewInternal } = props
   const content = useContentByUuid(uuid)
   const inputUuid = content?.input?.inputUuid
   const contentInput = useContentInputByUuid(inputUuid ?? '')
@@ -698,10 +397,9 @@ export const ContentInputViewReferencedSchema: FunctionComponent<{
   )
 })
 
-export const ContentInputView: FunctionComponent<{
-  schema: ContentInput
-  uuid: Uuid
-}> = memo((props) => {
+const ContentInputViewInternal: FunctionComponent<
+  ContentInputViewProps<ContentInput>
+> = memo((props) => {
   const { schema, uuid } = props
   switch (schema.tag) {
     case 'primitive-input':
@@ -723,6 +421,7 @@ export const ContentInputView: FunctionComponent<{
         <OneOfInputView
           schema={schema}
           uuid={uuid}
+          ContentInputView={ContentInputViewInternal}
         />
       )
     case 'object-input':
@@ -730,6 +429,7 @@ export const ContentInputView: FunctionComponent<{
         <ObjectContentInputView
           schema={schema}
           uuid={uuid}
+          ContentInputView={ContentInputViewInternal}
         />
       )
     case 'number-input':
@@ -741,17 +441,35 @@ export const ContentInputView: FunctionComponent<{
       )
     case 'array-input':
       return (
-        // TODO
         <ArrayContentInputView
           schema={schema}
           uuid={uuid}
+          ContentInputView={ContentInputViewInternal}
         />
       )
     case 'reference-input':
-      return <ContentInputViewReferencedSchema uuid={uuid} />
+      return (
+        <ContentInputViewReferencedSchema
+          uuid={uuid}
+          ContentInputView={ContentInputViewInternal}
+        />
+      )
     default:
       return <UnknownInputView schema={schema} />
   }
+})
+
+export const ContentInputView: FunctionComponent<
+  ContentInputViewProps<ContentInput>
+> = memo((props) => {
+  const { schema, uuid, ContentInputView: RecursiveView } = props
+  const View = RecursiveView || ContentInputViewInternal
+  return (
+    <View
+      schema={schema}
+      uuid={uuid}
+    />
+  )
 })
 
 export type EditorProps = {
@@ -774,3 +492,5 @@ export const Editor: FunctionComponent<EditorProps> = (props) => {
     </ContentYjsStoreContextProvider>
   )
 }
+
+export * from './store.tsx'

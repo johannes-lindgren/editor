@@ -2,6 +2,7 @@ import { styled } from '@mui/system'
 import { useFormControlContext } from '@mui/base'
 import React from 'react'
 import clsx from 'clsx'
+import { Typography } from '@mui/material'
 
 export const Label = styled(
   ({
@@ -21,27 +22,29 @@ export const Label = styled(
     }, [formControlContext])
 
     if (formControlContext === undefined) {
-      return <p>{children}</p>
+      return <Typography variant="subtitle2">{children}</Typography>
     }
 
     const { error, required, filled } = formControlContext
     const showRequiredError = dirty && required && !filled
 
     return (
-      <p
+      <Typography
+        variant="subtitle2"
         className={clsx(className, error || showRequiredError ? 'invalid' : '')}
       >
         {children}
-        {required ? ' *' : ''}
-      </p>
+        {required && <span className="required-indicator"> *</span>}
+      </Typography>
     )
   },
-)`
-  font-family: 'IBM Plex Sans', sans-serif;
-  font-size: 0.875rem;
-  margin-bottom: 4px;
+)(({ theme }) => ({
+  '&.invalid': {
+    color: theme.palette.error.main,
+  },
 
-  &.invalid {
-    color: red;
-  }
-`
+  '& .required-indicator': {
+    color: theme.palette.error.main,
+    marginLeft: '2px',
+  },
+}))

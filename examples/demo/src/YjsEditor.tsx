@@ -49,12 +49,8 @@ import { JsonView } from './JsonView.tsx'
 // })
 // const inputs = [defaultTextInput]
 
-const basicTextInput = textInput({
-  label: 'Text',
-})
-const basicNumberInput = numberInput({
-  label: 'Number',
-})
+const basicTextInput = textInput({})
+const basicNumberInput = numberInput({})
 
 const cardInput = objectInput({
   fields: {
@@ -86,15 +82,12 @@ const numberOrStringInput = oneOfInput({
 })
 
 const alignLeftInput = primitiveInput({
-  label: 'Left',
   value: 'left',
 })
 const alignCenterInput = primitiveInput({
-  label: 'Center',
   value: 'center',
 })
 const alignRightInput = primitiveInput({
-  label: 'Right',
   value: 'right',
 })
 
