@@ -1,24 +1,24 @@
 import {
-  Editor,
   ContentStore,
   ContentYjsStoreContextProvider,
-  useSelector,
+  Editor,
   InputStore,
+  useSelector,
 } from '@editor/dom'
 import {
-  objectInput,
-  textInput,
-  numberInput,
-  toTree,
-  toFlat,
-  toValueOnlyTree,
   arrayInput,
+  ContentInput,
+  FlatContent,
+  InputMap,
+  inputRef,
+  numberInput,
+  objectInput,
   oneOfInput,
   primitiveInput,
-  FlatContent,
-  inputRef,
-  ContentInput,
-  InputMap,
+  textInput,
+  toFlat,
+  toTree,
+  toValueOnlyTree,
 } from '@editor/model'
 import { createBinder } from 'react-immer-yjs'
 import * as Y from 'yjs'
@@ -34,8 +34,9 @@ import {
   Toolbar,
   Typography,
 } from '@mui/material'
-import { Menu as MenuIcon, Close as CloseIcon } from '@mui/icons-material'
+import { Close as CloseIcon, Menu as MenuIcon } from '@mui/icons-material'
 import { v4 as randomUuid } from 'uuid'
+import { JsonView } from './JsonView.tsx'
 
 // const contentTemplates: ContentStore = toStore({
 //   tag: 'text',
@@ -514,23 +515,6 @@ const ContentJsonViewWithContext: FunctionComponent<{
           </Stack>
         )}
       </Box>
-    </Box>
-  )
-}
-
-const JsonView: FunctionComponent<{ data: unknown }> = (props) => {
-  const { data } = props
-  return (
-    <Box
-      component="pre"
-      sx={{
-        border: 1,
-        borderColor: 'divider',
-        borderRadius: 1,
-        p: 2,
-      }}
-    >
-      <Box component="code">{JSON.stringify(data, null, 2)}</Box>
     </Box>
   )
 }
