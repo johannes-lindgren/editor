@@ -82,15 +82,12 @@ const numberOrStringInput = oneOfInput({
 })
 
 const alignLeftInput = primitiveInput({
-  label: 'Left',
   value: 'left',
 })
 const alignCenterInput = primitiveInput({
-  label: 'Center',
   value: 'center',
 })
 const alignRightInput = primitiveInput({
-  label: 'Right',
   value: 'right',
 })
 
