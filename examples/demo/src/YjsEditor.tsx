@@ -22,16 +22,19 @@ import {
 } from '@editor/model'
 import { createBinder } from 'react-immer-yjs'
 import * as Y from 'yjs'
-import { FunctionComponent } from 'react'
+import { FunctionComponent, useState } from 'react'
 import {
-  Accordion,
-  AccordionDetails,
-  AccordionSummary,
+  AppBar,
   Box,
+  IconButton,
   Paper,
   Stack,
+  Tab,
+  Tabs,
+  Toolbar,
   Typography,
 } from '@mui/material'
+import { Menu as MenuIcon, Close as CloseIcon } from '@mui/icons-material'
 import { v4 as randomUuid } from 'uuid'
 
 // const contentTemplates: ContentStore = toStore({
@@ -318,108 +321,200 @@ const contentInputStore: InputStore = createBinder(
 )
 
 export const YjsEditor = () => {
+  const [drawerOpen, setDrawerOpen] = useState(false)
+
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 2,
-      }}
-    >
-      <ContentJsonView store={contentStore} />
-      <Paper
+    <>
+      <AppBar position="fixed">
+        <Toolbar>
+          <Typography
+            variant="h6"
+            component="div"
+            sx={{ flexGrow: 1 }}
+          >
+            Editor
+          </Typography>
+          <IconButton
+            color="inherit"
+            aria-label="toggle drawer"
+            onClick={() => setDrawerOpen(!drawerOpen)}
+            edge="end"
+          >
+            <MenuIcon />
+          </IconButton>
+        </Toolbar>
+      </AppBar>
+      <Box
         sx={{
-          borderRadius: 2,
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          bgcolor: 'background.default',
           p: 2,
-          flex: 1,
+          pt: 10,
         }}
       >
-        <Typography
-          variant="h6"
-          component="div"
+        <Box
+          sx={{
+            position: 'relative',
+            width: '100%',
+            maxWidth: 960,
+          }}
         >
-          Editor
-        </Typography>
-        <Editor
-          store={contentStore}
-          inputStore={contentInputStore}
-          schema={inputLibrary.pageInput}
-          rootUuid={rootUuid}
-        />
-      </Paper>
-    </Box>
+          <ContentJsonView
+            store={contentStore}
+            open={drawerOpen}
+            onClose={() => setDrawerOpen(false)}
+          />
+          <Paper
+            sx={{
+              borderRadius: 2,
+              p: 2,
+            }}
+          >
+            <Typography
+              variant="h6"
+              component="div"
+            >
+              Content Editor
+            </Typography>
+            <Editor
+              store={contentStore}
+              inputStore={contentInputStore}
+              schema={inputLibrary.pageInput}
+              rootUuid={rootUuid}
+            />
+          </Paper>
+        </Box>
+      </Box>
+    </>
   )
 }
 
 const ContentJsonView: FunctionComponent<{
   store: ContentStore
+  open: boolean
+  onClose: () => void
 }> = (props) => {
-  const { store } = props
+  const { store, open, onClose } = props
   return (
     <ContentYjsStoreContextProvider store={store}>
-      <ContentJsonViewWithContext />
+      <ContentJsonViewWithContext
+        open={open}
+        onClose={onClose}
+      />
     </ContentYjsStoreContextProvider>
   )
 }
 
 const selectAll = (state: FlatContent) => state
 
-const ContentJsonViewWithContext = () => {
+const ContentJsonViewWithContext: FunctionComponent<{
+  open: boolean
+  onClose: () => void
+}> = ({ open, onClose }) => {
   const state = useSelector(selectAll)
+  const [tabValue, setTabValue] = useState(0)
+
+  if (!open) return null
+
   return (
-    <Stack>
-      <Accordion>
-        <AccordionSummary>
-          <Typography variant="subtitle1">Source</Typography>
-        </AccordionSummary>
-        <AccordionDetails>
-          <Typography
-            sx={{
-              color: 'text.secondary',
-            }}
-          >
-            The data is stored in a key-value database that maps content UUID
-            to: content
-          </Typography>
-          <JsonView data={state} />
-        </AccordionDetails>
-      </Accordion>
-
-      <Accordion>
-        <AccordionSummary>
-          <Typography variant="subtitle1">Tree</Typography>
-        </AccordionSummary>
-        <AccordionDetails>
-          <Typography
-            sx={{
-              color: 'text.secondary',
-            }}
-          >
-            The data can be transformed into a tree structure, which can be
-            easier to work with:
-          </Typography>
-          <JsonView data={toTree(state)} />
-        </AccordionDetails>
-      </Accordion>
-
-      <Accordion>
-        <AccordionSummary>
-          <Typography variant="subtitle1">Value-only Tree</Typography>
-        </AccordionSummary>
-        <AccordionDetails>
-          <Typography
-            sx={{
-              color: 'text.secondary',
-            }}
-          >
-            The tree-representation can be further simplified by recursively
-            extracting the value:
-          </Typography>
-          <JsonView data={toValueOnlyTree(toTree(state))} />
-        </AccordionDetails>
-      </Accordion>
-    </Stack>
+    <Box
+      sx={{
+        position: 'fixed',
+        top: 0,
+        right: 0,
+        height: '100vh',
+        width: 360,
+        maxWidth: '90vw',
+        bgcolor: 'background.paper',
+        boxShadow: 4,
+        borderLeft: 1,
+        borderColor: 'divider',
+        display: 'flex',
+        flexDirection: 'column',
+        zIndex: (theme) => theme.zIndex.drawer,
+      }}
+    >
+      <Box
+        sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          p: 2,
+          borderBottom: 1,
+          borderColor: 'divider',
+        }}
+      >
+        <Typography variant="h6">Data Inspector</Typography>
+        <IconButton
+          onClick={onClose}
+          size="small"
+        >
+          <CloseIcon />
+        </IconButton>
+      </Box>
+      <Tabs
+        value={tabValue}
+        onChange={(_, newValue) => setTabValue(newValue)}
+        sx={{
+          borderBottom: 1,
+          borderColor: 'divider',
+        }}
+      >
+        <Tab label="Source" />
+        <Tab label="Tree" />
+        <Tab label="Value-only" />
+      </Tabs>
+      <Box
+        sx={{
+          flex: 1,
+          overflowY: 'auto',
+          p: 2,
+        }}
+      >
+        {tabValue === 0 && (
+          <Stack spacing={2}>
+            <Typography
+              sx={{
+                color: 'text.secondary',
+              }}
+            >
+              The data is stored in a key-value database that maps content UUID
+              to: content
+            </Typography>
+            <JsonView data={state} />
+          </Stack>
+        )}
+        {tabValue === 1 && (
+          <Stack spacing={2}>
+            <Typography
+              sx={{
+                color: 'text.secondary',
+              }}
+            >
+              The data can be transformed into a tree structure, which can be
+              easier to work with:
+            </Typography>
+            <JsonView data={toTree(state)} />
+          </Stack>
+        )}
+        {tabValue === 2 && (
+          <Stack spacing={2}>
+            <Typography
+              sx={{
+                color: 'text.secondary',
+              }}
+            >
+              The tree-representation can be further simplified by recursively
+              extracting the value:
+            </Typography>
+            <JsonView data={toValueOnlyTree(toTree(state))} />
+          </Stack>
+        )}
+      </Box>
+    </Box>
   )
 }
 
