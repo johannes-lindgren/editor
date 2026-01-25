@@ -4,7 +4,7 @@ import {
   ObjectContentInput,
   TextContentInput,
   PrimitiveContentInput,
-} from './index.ts'
+} from './input'
 
 export type InferPrimitive<T extends PrimitiveContentInput> = T['value']
 export type InferText<_T extends TextContentInput> = string

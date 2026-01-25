@@ -59,7 +59,7 @@ const grey = {
 }
 
 const CustomButtonRoot = styled('button')(
-  ({ theme }) => `
+  () => `
   border: 0;
   font-family: 'IBM Plex Sans', sans-serif;
   font-weight: 600;
@@ -79,7 +79,7 @@ const CustomButtonRoot = styled('button')(
 )
 
 const CustomButtonInner = styled('div')(
-  ({ theme }) => `
+  () => `
   
     padding: 8px 16px;
     border: 0;
