@@ -25,14 +25,29 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Check Prettier formatting
+      - id: prettier
+        name: Check Prettier formatting
         run: pnpm prettier --check .
+        continue-on-error: true
 
-      - name: Run type check (recursive)
+      - id: types
+        name: Run type check (recursive)
         run: pnpm -r run types:check
+        continue-on-error: true
 
-      - name: Run lint (recursive)
+      - id: lint
+        name: Run lint (recursive)
         run: pnpm -r run lint
+        continue-on-error: true
+
+      - name: Fail if any checks failed
+        if: |
+          steps.prettier.outcome == 'failure' ||
+          steps.types.outcome == 'failure' ||
+          steps.lint.outcome == 'failure'
+        run: |
+          echo "One or more checks failed:"
+          echo "  Prettier: ${{ steps.prettier.outcome }}"
+          echo "  Types:    ${{ steps.types.outcome }}"
+          echo "  Lint:     ${{ steps.lint.outcome }}"
+          exit 1

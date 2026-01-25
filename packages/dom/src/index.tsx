@@ -31,12 +31,10 @@ import {
   ArrayContentInput,
   cloneContent,
   ContentInput,
-  ContentReference,
   FlatContent,
   isArrayContent,
   isOneOfContent,
   OneOfContentInput,
-  subStore,
   Uuid,
 } from '@editor/model'
 import {
@@ -47,7 +45,6 @@ import {
   Scale,
 } from './components'
 import { v4 as randomUuid } from 'uuid'
-import { createSelector } from 'reselect'
 import { Dropdown } from '@mui/base/Dropdown'
 import { Menu } from '@mui/base'
 import {
@@ -75,7 +72,7 @@ import {
 export type ContentInputViewProps<Schema> = {
   schema: Schema
   uuid: Uuid
-  ContentInputView?: FunctionComponent<ContentInputViewProps<ContentInput>>
+  ContentInputView: FunctionComponent<ContentInputViewProps<ContentInput>>
 }
 
 export const InputNotFoundView: FunctionComponent<{
@@ -174,14 +171,6 @@ const OneOfInputView: FunctionComponent<
     </FormControl>
   )
 })
-
-const selectStore = (store: FlatContent) => store
-const selectUuid = (_: FlatContent, uuid: Uuid) => uuid
-
-const selectContentStoreByUuid = createSelector(
-  [selectStore, selectUuid],
-  (store: FlatContent, uuid: Uuid) => subStore(store, uuid),
-)
 
 const ArrayItemWrapper: FunctionComponent<{
   children: ReactNode
@@ -325,12 +314,13 @@ const ArrayContentInputView: FunctionComponent<
     })
   }
 
-  const handleReorder = (newOrder: ContentReference[]) => {
+  const handleReorder = (newOrder: unknown[]) => {
     update((draft) => {
       const currentContent = draft.data[uuid]
       if (!isArrayContent(currentContent)) {
         return
       }
+      // @ts-expect-error
       currentContent.value = newOrder
     })
   }
@@ -353,6 +343,9 @@ const ArrayContentInputView: FunctionComponent<
         return
       }
       const item = currentContent.value[index]
+      if (!item) {
+        return
+      }
       currentContent.value.splice(index, 1)
       currentContent.value.splice(index - 1, 0, item)
     })
@@ -364,8 +357,13 @@ const ArrayContentInputView: FunctionComponent<
       if (!isArrayContent(currentContent)) {
         return
       }
-      if (index >= currentContent.value.length - 1) return
+      if (index >= currentContent.value.length - 1) {
+        return
+      }
       const item = currentContent.value[index]
+      if (!item) {
+        return
+      }
       currentContent.value.splice(index, 1)
       currentContent.value.splice(index + 1, 0, item)
     })
@@ -489,6 +487,7 @@ const SelectContentFromTemplateView: FunctionComponent<{
     >
       <MenuButton
         sx={{
+          // @ts-expect-error TODO
           fontSize: (theme) => theme.typography.pxToRem(16),
           minWidth: 'auto',
           padding: '8px',
@@ -560,6 +559,7 @@ export const ContentInputViewReferencedSchema: FunctionComponent<{
     <ContentInputView
       schema={contentInput}
       uuid={content.uuid}
+      ContentInputView={ContentInputViewInternal}
     />
   )
 })
@@ -604,6 +604,7 @@ const ContentInputViewInternal: FunctionComponent<
         <NumberContentInputView
           schema={schema}
           uuid={uuid}
+          ContentInputView={ContentInputViewInternal}
         />
       )
     case 'array-input':
@@ -626,15 +627,16 @@ const ContentInputViewInternal: FunctionComponent<
   }
 })
 
-export const ContentInputView: FunctionComponent<
-  ContentInputViewProps<ContentInput>
-> = memo((props) => {
-  const { schema, uuid, ContentInputView: RecursiveView } = props
-  const View = RecursiveView || ContentInputViewInternal
+export const ContentInputView: FunctionComponent<{
+  schema: ContentInput
+  uuid: Uuid
+}> = memo((props) => {
+  const { schema, uuid } = props
   return (
-    <View
+    <ContentInputViewInternal
       schema={schema}
       uuid={uuid}
+      ContentInputView={ContentInputViewInternal}
     />
   )
 })

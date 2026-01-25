@@ -64,7 +64,7 @@ export const useSelector = <T extends Snapshot, Selection>(
   store: Store<T>,
   selector: (state: State<T>) => Selection,
 ): Selection => {
-  const lastSnapshotRef = useRef<T>()
+  const lastSnapshotRef = useRef<T>(undefined)
   const lastStateRef = useRef<State<T>>({
     tag: 'uninitialized',
   })
@@ -78,7 +78,10 @@ export const useSelector = <T extends Snapshot, Selection>(
     const currentSnapshot = binder ? binder.get() : undefined
 
     // Compare with the previous snapshot to prevent unnecessary changes
-    if (currentSnapshot !== lastSnapshotRef.current) {
+    if (
+      currentSnapshot !== lastSnapshotRef.current &&
+      currentSnapshot !== undefined
+    ) {
       lastSnapshotRef.current = currentSnapshot
       lastStateRef.current = currentSnapshot
         ? { tag: 'initialized', value: currentSnapshot }

@@ -1,6 +1,6 @@
 import {
+  arrayGuard,
   equalsGuard,
-  isArray,
   isNumber,
   isString,
   objectGuard,
@@ -154,11 +154,11 @@ export type ArrayContent = {
   value: ContentReference[]
 }
 
-export const isArrayContent = objectGuard({
+export const isArrayContent = objectGuard<ArrayContent>({
   tag: equalsGuard('array'),
   uuid: isUuid,
   input: optionalGuard(isContentInputReference),
-  value: isArray,
+  value: arrayGuard(isContentReference),
 })
 
 export type ArrayContentInput = {
@@ -601,6 +601,7 @@ export const cloneContent = (content: FlatContent): FlatContent => {
         }
         break
       default:
+        // @ts-expect-error
         // TODO of course, we're not going to keep any exceptions in the final version
         throw new Error(`Unknown tag ${JSON.stringify(oldContent.tag)}`)
     }
