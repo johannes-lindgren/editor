@@ -185,30 +185,38 @@ const selectContentStoreByUuid = createSelector(
 
 const ArrayItemWrapper: FunctionComponent<{
   children: ReactNode
-  value: ContentReference
   index: number
   total: number
   onRemove: () => void
   onMoveUp: () => void
   onMoveDown: () => void
 }> = memo((props) => {
-  const { children, value, index, total, onRemove, onMoveUp, onMoveDown } =
-    props
+  const { children, index, total, onRemove, onMoveUp, onMoveDown } = props
+  const [isHovered, setIsHovered] = useState(false)
+
   return (
-    <Reorder.Item
-      value={value}
-      style={{
-        listStyle: 'none',
+    <Box
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      sx={{
+        display: 'flex',
+        gap: 1,
+        alignItems: 'flex-start',
+        borderRadius: 1,
       }}
     >
       <Box
+        display="flex"
+        flex={1}
         sx={{
-          display: 'flex',
-          gap: 1,
-          alignItems: 'flex-start',
-          borderRadius: 1,
+          '&>*': {
+            flex: 1,
+          },
         }}
       >
+        {children}
+      </Box>
+      <Box position="relative">
         <DragIndicatorIcon
           fontSize="small"
           sx={{
@@ -218,19 +226,31 @@ const ArrayItemWrapper: FunctionComponent<{
               cursor: 'grabbing',
             },
             color: (theme) => theme.palette.text.secondary,
+            opacity: isHovered ? 1 : 0,
+            transition: (theme) =>
+              theme.transitions.create('opacity', {
+                duration: theme.transitions.duration.shorter,
+                easing: theme.transitions.easing.easeInOut,
+              }),
           }}
           style={{ touchAction: 'none' }}
         />
-        <Box
-          display="flex"
-          flex={1}
-        >
-          {children}
-        </Box>
         <Stack
-          direction="row"
+          position="absolute"
           spacing={0.5}
-          sx={{ mt: 0.5 }}
+          sx={{
+            mt: 0.5,
+            opacity: isHovered ? 1 : 0,
+            transition: (theme) =>
+              theme.transitions.create('opacity', {
+                duration: theme.transitions.duration.shorter,
+                easing: theme.transitions.easing.easeInOut,
+              }),
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: 'background.paper',
+            borderRadius: 1,
+          }}
         >
           <IconButton
             size="small"
@@ -262,9 +282,9 @@ const ArrayItemWrapper: FunctionComponent<{
           >
             <DeleteIcon fontSize="small" />
           </IconButton>
-        </Stack>
+        </Stack>{' '}
       </Box>
-    </Reorder.Item>
+    </Box>
   )
 })
 
@@ -355,12 +375,9 @@ const ArrayContentInputView: FunctionComponent<
     <Stack
       sx={{
         gap: 2,
-        // p: 2,
-        // border: 1,
-        // borderColor: 'divider',
-        // borderRadius: 1,
       }}
     >
+      {schema.label && <Label>{schema.label}</Label>}
       <Box
         component={Reorder.Group}
         axis="y"
@@ -375,20 +392,26 @@ const ArrayContentInputView: FunctionComponent<
         }}
       >
         {content.value.map((childContent, index) => (
-          <ArrayItemWrapper
+          <Reorder.Item
             key={childContent.uuid}
             value={childContent}
-            index={index}
-            total={content.value.length}
-            onRemove={() => handleRemove(index)}
-            onMoveUp={() => handleMoveUp(index)}
-            onMoveDown={() => handleMoveDown(index)}
+            style={{
+              listStyle: 'none',
+            }}
           >
-            <ContentInputViewReferencedSchema
-              uuid={childContent.valueUuid}
-              ContentInputView={ContentInputView || ContentInputViewInternal}
-            />
-          </ArrayItemWrapper>
+            <ArrayItemWrapper
+              index={index}
+              total={content.value.length}
+              onRemove={() => handleRemove(index)}
+              onMoveUp={() => handleMoveUp(index)}
+              onMoveDown={() => handleMoveDown(index)}
+            >
+              <ContentInputViewReferencedSchema
+                uuid={childContent.valueUuid}
+                ContentInputView={ContentInputView || ContentInputViewInternal}
+              />
+            </ArrayItemWrapper>
+          </Reorder.Item>
         ))}
       </Box>
       <Box
