@@ -45,7 +45,6 @@ import {
   Scale,
 } from './components'
 import { v4 as randomUuid } from 'uuid'
-import { createSelector } from 'reselect'
 import { Dropdown } from '@mui/base/Dropdown'
 import { Menu } from '@mui/base'
 import {
@@ -172,14 +171,6 @@ const OneOfInputView: FunctionComponent<
     </FormControl>
   )
 })
-
-const selectStore = (store: FlatContent) => store
-const selectUuid = (_: FlatContent, uuid: Uuid) => uuid
-
-const selectContentStoreByUuid = createSelector(
-  [selectStore, selectUuid],
-  (store: FlatContent, uuid: Uuid) => subStore(store, uuid),
-)
 
 const ArrayItemWrapper: FunctionComponent<{
   children: ReactNode
