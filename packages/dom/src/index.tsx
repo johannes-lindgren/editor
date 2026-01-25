@@ -4,6 +4,7 @@ import {
   Box,
   Divider,
   FormControl,
+  IconButton,
   Stack,
   Typography,
 } from '@mui/material'
@@ -17,11 +18,17 @@ import {
   useMemo,
   useState,
 } from 'react'
-import { Add as AddIcon, SwapHoriz as SwapIcon } from '@mui/icons-material'
+import {
+  Add as AddIcon,
+  SwapHoriz as SwapIcon,
+  DragIndicator as DragIndicatorIcon,
+} from '@mui/icons-material'
+import { Reorder } from 'motion/react'
 import {
   ArrayContentInput,
   cloneContent,
   ContentInput,
+  ContentReference,
   FlatContent,
   isArrayContent,
   isOneOfContent,
@@ -153,13 +160,11 @@ const OneOfInputView: FunctionComponent<
         <Box
           sx={{
             position: 'relative',
-            p: 2,
-            pt: 1.5,
           }}
         >
           <ContentInputViewReferencedSchema
             uuid={content.value.valueUuid}
-            ContentInputView={ContentInputView}
+            ContentInputView={ContentInputView || ContentInputViewInternal}
           />
         </Box>
       </Stack>
@@ -174,6 +179,49 @@ const selectContentStoreByUuid = createSelector(
   [selectStore, selectUuid],
   (store: FlatContent, uuid: Uuid) => subStore(store, uuid),
 )
+
+const ArrayItemWrapper: FunctionComponent<{
+  children: ReactNode
+  value: ContentReference
+}> = memo((props) => {
+  const { children, value } = props
+  return (
+    <Reorder.Item
+      value={value}
+      style={{
+        listStyle: 'none',
+      }}
+    >
+      <Box
+        sx={{
+          display: 'flex',
+          gap: 1,
+          alignItems: 'flex-start',
+          borderRadius: 1,
+        }}
+      >
+        <DragIndicatorIcon
+          fontSize="small"
+          sx={{
+            mt: 1,
+            cursor: 'grab',
+            '&:active': {
+              cursor: 'grabbing',
+            },
+            color: (theme) => theme.palette.text.secondary,
+          }}
+          style={{ touchAction: 'none' }}
+        />
+        <Box
+          display="flex"
+          flex={1}
+        >
+          {children}
+        </Box>
+      </Box>
+    </Reorder.Item>
+  )
+})
 
 const ArrayContentInputView: FunctionComponent<
   ContentInputViewProps<ArrayContentInput>
@@ -212,44 +260,54 @@ const ArrayContentInputView: FunctionComponent<
     })
   }
 
-  const createHandleMenuClick = (contentTemplate: FlatContent) => {
-    return () => {
-      update((draft) => {
-        const currentContent = draft.data[uuid]
-        if (!isArrayContent(currentContent)) {
-          return
-        }
-        const clonedStore = cloneContent(contentTemplate)
-
-        Object.assign(draft.data, clonedStore.data)
-        currentContent.value.push({
-          tag: 'reference',
-          uuid: randomUuid(),
-          valueUuid: clonedStore.rootUuid,
-        })
-      })
-    }
+  const handleReorder = (newOrder: ContentReference[]) => {
+    update((draft) => {
+      const currentContent = draft.data[uuid]
+      if (!isArrayContent(currentContent)) {
+        return
+      }
+      currentContent.value = newOrder
+    })
   }
+
   return (
     <Stack
       sx={{
         gap: 2,
-        p: 2,
-        border: 1,
-        borderColor: 'divider',
-        borderRadius: 1,
+        // p: 2,
+        // border: 1,
+        // borderColor: 'divider',
+        // borderRadius: 1,
       }}
     >
-      {content.value.map((childContent) => (
-        <ContentInputViewReferencedSchema
-          key={childContent.uuid}
-          uuid={childContent.valueUuid}
-          ContentInputView={ContentInputView}
-        />
-      ))}
+      <Box
+        component={Reorder.Group}
+        axis="y"
+        values={content.value}
+        onReorder={handleReorder}
+        sx={{
+          padding: 0,
+          margin: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 1,
+        }}
+      >
+        {content.value.map((childContent) => (
+          <ArrayItemWrapper
+            key={childContent.uuid}
+            value={childContent}
+          >
+            <ContentInputViewReferencedSchema
+              uuid={childContent.valueUuid}
+              ContentInputView={ContentInputView || ContentInputViewInternal}
+            />
+          </ArrayItemWrapper>
+        ))}
+      </Box>
       <Box
         display="inherit"
-        justifyContent="center"
+        justifyContent="flex-start"
       >
         <SelectContentFromTemplateView
           templates={schema.items}
@@ -374,7 +432,7 @@ const ContentPreview: FunctionComponent<{
 
 export const ContentInputViewReferencedSchema: FunctionComponent<{
   uuid: Uuid
-  ContentInputView: FunctionComponent<ContentInputViewProps<ContentInput>>
+  ContentInputView?: FunctionComponent<ContentInputViewProps<ContentInput>>
 }> = memo((props) => {
   const { uuid, ContentInputView = ContentInputViewInternal } = props
   const content = useContentByUuid(uuid)
