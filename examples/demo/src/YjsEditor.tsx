@@ -9,6 +9,7 @@ import {
   arrayInput,
   ContentInput,
   FlatContent,
+  InferContentInput,
   InputMap,
   inputRef,
   numberInput,
