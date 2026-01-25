@@ -128,6 +128,7 @@ export type ObjectContent = {
 export type ObjectContentInput = {
   tag: 'object-input'
   uuid: Uuid
+  label?: string
   fields: Record<string, ContentInput>
 }
 
@@ -160,6 +161,7 @@ export const isArrayContent = objectGuard({
 export type ArrayContentInput = {
   tag: 'array-input'
   uuid: Uuid
+  label?: string
   items: FlatContent[]
 }
 export const arrayInput = (
@@ -484,8 +486,9 @@ export const toValueOnlyTree = (content: ContentTree): ValueOnlyTree => {
       // @ts-expect-error
       return toValueOnlyTree(content.value)
     default:
+      // @ts-expect-error
       // TODO of course, we're not going to keep any exceptions in the final version
-      throw new Error('Unknown tag')
+      throw new Error(`Unknown tag ${JSON.stringify(content.tag)}`)
   }
 }
 
@@ -568,9 +571,34 @@ export const cloneContent = (content: FlatContent): FlatContent => {
           }),
         }
         break
+      case 'one-of':
+        {
+          const child = oldContent.value
+          const newValueUuid = newUuidFromOld.get(child.valueUuid)
+          if (newValueUuid === undefined) {
+            // Should never happen
+            throw new Error('Undefined new uuid')
+          }
+          result[newUuid] = {
+            tag: 'one-of',
+            uuid: newUuid,
+            input: oldContent.input
+              ? {
+                  ...oldContent.input,
+                  uuid: randomUuid(),
+                }
+              : undefined,
+            value: {
+              tag: 'reference',
+              uuid: randomUuid(),
+              valueUuid: newValueUuid,
+            },
+          }
+        }
+        break
       default:
         // TODO of course, we're not going to keep any exceptions in the final version
-        throw new Error('Unknown tag')
+        throw new Error(`Unknown tag ${JSON.stringify(oldContent.tag)}`)
     }
   }
   return {

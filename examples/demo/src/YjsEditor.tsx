@@ -38,20 +38,73 @@ import { Close as CloseIcon, Menu as MenuIcon } from '@mui/icons-material'
 import { v4 as randomUuid } from 'uuid'
 import { JsonView } from './JsonView.tsx'
 
-// const contentTemplates: ContentStore = toStore({
-//   tag: 'text',
-//   uuid: randomUuid(),
-//   value: 'this is from a template',
-// })
-
-// const defaultTextInput = textInput({
-//   label: 'Some text'
-// })
-// const inputs = [defaultTextInput]
-
+// Basic inputs
 const basicTextInput = textInput({})
 const basicNumberInput = numberInput({})
 
+// Button variants
+const buttonPrimaryVariant = primitiveInput({ value: 'primary' })
+const buttonSecondaryVariant = primitiveInput({ value: 'secondary' })
+const buttonOutlineVariant = primitiveInput({ value: 'outline' })
+
+const buttonVariantInput = oneOfInput({
+  label: 'Button Variant',
+  options: [
+    {
+      tag: 'primitive',
+      uuid: randomUuid(),
+      input: inputRef(buttonPrimaryVariant),
+      value: 'primary',
+    },
+    {
+      tag: 'primitive',
+      uuid: randomUuid(),
+      input: inputRef(buttonSecondaryVariant),
+      value: 'secondary',
+    },
+    {
+      tag: 'primitive',
+      uuid: randomUuid(),
+      input: inputRef(buttonOutlineVariant),
+      value: 'outline',
+    },
+  ].map(toFlat),
+})
+
+// Button component
+const buttonInput = objectInput({
+  label: 'Button',
+  fields: {
+    text: textInput({
+      label: 'Button Text',
+    }),
+    url: textInput({
+      label: 'URL',
+    }),
+    variant: buttonVariantInput,
+  },
+})
+
+// Image component
+const imageInput = objectInput({
+  label: 'Image',
+  fields: {
+    src: textInput({
+      label: 'Image URL',
+    }),
+    alt: textInput({
+      label: 'Alt Text',
+    }),
+    width: numberInput({
+      label: 'Width',
+    }),
+    height: numberInput({
+      label: 'Height',
+    }),
+  },
+})
+
+// Card component
 const cardInput = objectInput({
   fields: {
     title: textInput({
@@ -60,36 +113,15 @@ const cardInput = objectInput({
     description: textInput({
       label: 'Description',
     }),
+    image: inputRef(imageInput),
+    button: inputRef(buttonInput),
   },
 })
 
-const numberOrStringInput = oneOfInput({
-  label: 'number or string',
-  options: [
-    {
-      tag: 'number',
-      uuid: randomUuid(),
-      input: inputRef(basicNumberInput),
-      value: 123,
-    },
-    {
-      tag: 'text',
-      uuid: randomUuid(),
-      input: inputRef(basicTextInput),
-      value: 'this is also from a template',
-    },
-  ].map(toFlat),
-})
-
-const alignLeftInput = primitiveInput({
-  value: 'left',
-})
-const alignCenterInput = primitiveInput({
-  value: 'center',
-})
-const alignRightInput = primitiveInput({
-  value: 'right',
-})
+// Alignment options
+const alignLeftInput = primitiveInput({ value: 'left' })
+const alignCenterInput = primitiveInput({ value: 'center' })
+const alignRightInput = primitiveInput({ value: 'right' })
 
 const alignInput = oneOfInput({
   label: 'Alignment',
@@ -115,11 +147,29 @@ const alignInput = oneOfInput({
   ].map(toFlat),
 })
 
-const pageInput = objectInput({
+// Hero section component
+const heroSectionInput = objectInput({
+  label: 'Hero',
   fields: {
-    type: primitiveInput({
-      label: 'Type',
-      value: 'page',
+    headline: textInput({
+      label: 'Headline',
+    }),
+    subheadline: textInput({
+      label: 'Subheadline',
+    }),
+    backgroundImage: inputRef(imageInput),
+    primaryButton: inputRef(buttonInput),
+    secondaryButton: inputRef(buttonInput),
+    textAlign: alignInput,
+  },
+})
+
+// Feature component
+const featureInput = objectInput({
+  label: 'Feature',
+  fields: {
+    icon: textInput({
+      label: 'Icon',
     }),
     title: textInput({
       label: 'Title',
@@ -127,56 +177,175 @@ const pageInput = objectInput({
     description: textInput({
       label: 'Description',
     }),
-    numberOrString: inputRef(numberOrStringInput),
-    referencedText: inputRef(basicTextInput),
-    paddingTop: numberInput({
-      label: 'Padding Top',
+  },
+})
+
+// Card grid section
+const cardGridSectionInput = objectInput({
+  label: 'Card Grid',
+  fields: {
+    title: textInput({
+      label: 'Section Title',
     }),
-    align: alignInput,
-    body: objectInput({
-      fields: {
-        title: textInput({
-          label: 'Title',
-        }),
-        description: textInput({
-          label: 'Description',
-        }),
-      },
+    description: textInput({
+      label: 'Section Description',
     }),
-    body2: arrayInput({
+    cards: arrayInput({
+      items: [],
+    }),
+  },
+})
+
+// Features section
+const featuresSectionInput = objectInput({
+  label: 'Features',
+  fields: {
+    title: textInput({
+      label: 'Section Title',
+    }),
+    description: textInput({
+      label: 'Section Description',
+    }),
+    features: arrayInput({
+      items: [],
+    }),
+  },
+})
+
+// Website page input
+const websitePageInput = objectInput({
+  label: 'Page',
+  fields: {
+    type: primitiveInput({
+      label: 'Type',
+      value: 'website-page',
+    }),
+    title: textInput({
+      label: 'Page Title',
+    }),
+    sections: arrayInput({
+      label: 'Sections',
       items: [
         {
-          tag: 'text',
+          tag: 'object',
           uuid: randomUuid(),
-          input: inputRef(basicTextInput),
-          value: 'this is from a template',
-        },
-        {
-          tag: 'text',
-          uuid: randomUuid(),
-          input: inputRef(basicTextInput),
-          value: 'this is also from a template',
-        },
-        {
-          tag: 'number',
-          uuid: randomUuid(),
-          input: inputRef(basicNumberInput),
-          value: 0,
+          input: inputRef(heroSectionInput),
+          value: {
+            headline: {
+              tag: 'text',
+              uuid: randomUuid(),
+              value: 'New Hero Section',
+            },
+            subheadline: {
+              tag: 'text',
+              uuid: randomUuid(),
+              value: 'Add your subheadline here',
+            },
+            backgroundImage: {
+              tag: 'object',
+              uuid: randomUuid(),
+              input: inputRef(imageInput),
+              value: {
+                src: { tag: 'text', uuid: randomUuid(), value: '' },
+                alt: { tag: 'text', uuid: randomUuid(), value: '' },
+                width: { tag: 'number', uuid: randomUuid(), value: 1920 },
+                height: { tag: 'number', uuid: randomUuid(), value: 1080 },
+              },
+            },
+            primaryButton: {
+              tag: 'object',
+              uuid: randomUuid(),
+              input: inputRef(buttonInput),
+              value: {
+                text: { tag: 'text', uuid: randomUuid(), value: 'Click Here' },
+                url: { tag: 'text', uuid: randomUuid(), value: '#' },
+                variant: {
+                  tag: 'one-of',
+                  uuid: randomUuid(),
+                  input: inputRef(buttonVariantInput),
+                  value: {
+                    tag: 'primitive',
+                    uuid: randomUuid(),
+                    input: inputRef(buttonPrimaryVariant),
+                    value: 'primary',
+                  },
+                },
+              },
+            },
+            secondaryButton: {
+              tag: 'object',
+              uuid: randomUuid(),
+              input: inputRef(buttonInput),
+              value: {
+                text: { tag: 'text', uuid: randomUuid(), value: 'Learn More' },
+                url: { tag: 'text', uuid: randomUuid(), value: '#' },
+                variant: {
+                  tag: 'one-of',
+                  uuid: randomUuid(),
+                  input: inputRef(buttonVariantInput),
+                  value: {
+                    tag: 'primitive',
+                    uuid: randomUuid(),
+                    input: inputRef(buttonSecondaryVariant),
+                    value: 'secondary',
+                  },
+                },
+              },
+            },
+            textAlign: {
+              tag: 'one-of',
+              uuid: randomUuid(),
+              input: inputRef(alignInput),
+              value: {
+                tag: 'primitive',
+                uuid: randomUuid(),
+                input: inputRef(alignCenterInput),
+                value: 'center',
+              },
+            },
+          },
         },
         {
           tag: 'object',
           uuid: randomUuid(),
-          input: inputRef(cardInput),
+          input: inputRef(featuresSectionInput),
           value: {
             title: {
               tag: 'text',
               uuid: randomUuid(),
-              value: 'Title',
+              value: 'New Features Section',
             },
             description: {
               tag: 'text',
               uuid: randomUuid(),
-              value: 'Description',
+              value: 'Add your description here',
+            },
+            features: {
+              tag: 'array',
+              uuid: randomUuid(),
+              value: [],
+            },
+          },
+        },
+        {
+          tag: 'object',
+          uuid: randomUuid(),
+          input: inputRef(cardGridSectionInput),
+          value: {
+            title: {
+              tag: 'text',
+              uuid: randomUuid(),
+              value: 'New Card Grid Section',
+            },
+            description: {
+              tag: 'text',
+              uuid: randomUuid(),
+              value: 'Add your description here',
+            },
+            cards: {
+              tag: 'array',
+              uuid: randomUuid(),
+              value: [],
             },
           },
         },
@@ -186,11 +355,20 @@ const pageInput = objectInput({
 })
 
 const inputLibrary = {
-  pageInput,
-  basicNumberInput,
+  websitePageInput,
+  heroSectionInput,
+  featuresSectionInput,
+  cardGridSectionInput,
   cardInput,
-  basicTextInput: basicTextInput,
-  numberOrStringInput,
+  featureInput,
+  buttonInput,
+  imageInput,
+  basicTextInput,
+  basicNumberInput,
+  buttonVariantInput,
+  buttonPrimaryVariant,
+  buttonSecondaryVariant,
+  buttonOutlineVariant,
   alignInput,
   alignLeftInput,
   alignCenterInput,
@@ -201,92 +379,394 @@ const inputLibrary = {
 const contentTree = {
   tag: 'object',
   uuid: randomUuid(),
+  input: inputRef(inputLibrary.websitePageInput),
   value: {
     type: {
       tag: 'primitive',
       uuid: randomUuid(),
-      value: 'Page',
-    },
-    align: {
-      tag: 'one-of',
-      uuid: randomUuid(),
-      input: inputRef(inputLibrary.alignInput),
-      value: {
-        tag: 'primitive',
-        uuid: randomUuid(),
-        input: inputRef(inputLibrary.alignLeftInput),
-        value: 'left',
-      },
+      value: 'website-page',
     },
     title: {
       tag: 'text',
       uuid: randomUuid(),
-      value: 'Title',
+      value: 'Welcome to Our Website',
     },
-    description: {
-      tag: 'text',
-      uuid: randomUuid(),
-      value: 'Description',
-    },
-    numberOrString: {
-      tag: 'one-of',
-      uuid: randomUuid(),
-      input: inputRef(inputLibrary.numberOrStringInput),
-      value: {
-        tag: 'text',
-        uuid: randomUuid(),
-        input: inputRef(inputLibrary.basicTextInput),
-        value: 'Number or string',
-      },
-    },
-    referencedText: {
-      tag: 'text',
-      uuid: randomUuid(),
-      input: inputRef(inputLibrary.basicTextInput),
-      value: 'Referenced text value ',
-    },
-    paddingTop: {
-      tag: 'number',
-      uuid: randomUuid(),
-      value: 10,
-    },
-    body: {
-      tag: 'object',
-      uuid: randomUuid(),
-      value: {
-        title: {
-          tag: 'text',
-          uuid: randomUuid(),
-          value: 'Title',
-        },
-        description: {
-          tag: 'text',
-          uuid: randomUuid(),
-          value: 'Description',
-        },
-      },
-    },
-    body2: {
+    sections: {
       tag: 'array',
       uuid: randomUuid(),
       value: [
+        // Hero Section
         {
-          tag: 'text',
+          tag: 'object',
           uuid: randomUuid(),
-          input: inputRef(basicTextInput),
-          value: 'Item 1',
+          input: inputRef(inputLibrary.heroSectionInput),
+          value: {
+            headline: {
+              tag: 'text',
+              uuid: randomUuid(),
+              value: 'Build Amazing Products',
+            },
+            subheadline: {
+              tag: 'text',
+              uuid: randomUuid(),
+              value: 'Create stunning websites with our easy-to-use platform',
+            },
+            backgroundImage: {
+              tag: 'object',
+              uuid: randomUuid(),
+              input: inputRef(inputLibrary.imageInput),
+              value: {
+                src: {
+                  tag: 'text',
+                  uuid: randomUuid(),
+                  value: 'https://via.placeholder.com/1920x1080',
+                },
+                alt: {
+                  tag: 'text',
+                  uuid: randomUuid(),
+                  value: 'Hero background',
+                },
+                width: {
+                  tag: 'number',
+                  uuid: randomUuid(),
+                  value: 1920,
+                },
+                height: {
+                  tag: 'number',
+                  uuid: randomUuid(),
+                  value: 1080,
+                },
+              },
+            },
+            primaryButton: {
+              tag: 'object',
+              uuid: randomUuid(),
+              input: inputRef(inputLibrary.buttonInput),
+              value: {
+                text: {
+                  tag: 'text',
+                  uuid: randomUuid(),
+                  value: 'Get Started',
+                },
+                url: {
+                  tag: 'text',
+                  uuid: randomUuid(),
+                  value: '/signup',
+                },
+                variant: {
+                  tag: 'one-of',
+                  uuid: randomUuid(),
+                  input: inputRef(inputLibrary.buttonVariantInput),
+                  value: {
+                    tag: 'primitive',
+                    uuid: randomUuid(),
+                    input: inputRef(inputLibrary.buttonPrimaryVariant),
+                    value: 'primary',
+                  },
+                },
+              },
+            },
+            secondaryButton: {
+              tag: 'object',
+              uuid: randomUuid(),
+              input: inputRef(inputLibrary.buttonInput),
+              value: {
+                text: {
+                  tag: 'text',
+                  uuid: randomUuid(),
+                  value: 'Learn More',
+                },
+                url: {
+                  tag: 'text',
+                  uuid: randomUuid(),
+                  value: '/about',
+                },
+                variant: {
+                  tag: 'one-of',
+                  uuid: randomUuid(),
+                  input: inputRef(inputLibrary.buttonVariantInput),
+                  value: {
+                    tag: 'primitive',
+                    uuid: randomUuid(),
+                    input: inputRef(inputLibrary.buttonSecondaryVariant),
+                    value: 'secondary',
+                  },
+                },
+              },
+            },
+            textAlign: {
+              tag: 'one-of',
+              uuid: randomUuid(),
+              input: inputRef(inputLibrary.alignInput),
+              value: {
+                tag: 'primitive',
+                uuid: randomUuid(),
+                input: inputRef(inputLibrary.alignCenterInput),
+                value: 'center',
+              },
+            },
+          },
         },
+        // Features Section
         {
-          tag: 'text',
+          tag: 'object',
           uuid: randomUuid(),
-          input: inputRef(basicTextInput),
-          value: 'Item 2',
+          input: inputRef(inputLibrary.featuresSectionInput),
+          value: {
+            title: {
+              tag: 'text',
+              uuid: randomUuid(),
+              value: 'Our Features',
+            },
+            description: {
+              tag: 'text',
+              uuid: randomUuid(),
+              value: 'Everything you need to build your website',
+            },
+            features: {
+              tag: 'array',
+              uuid: randomUuid(),
+              value: [
+                {
+                  tag: 'object',
+                  uuid: randomUuid(),
+                  input: inputRef(inputLibrary.featureInput),
+                  value: {
+                    icon: {
+                      tag: 'text',
+                      uuid: randomUuid(),
+                      value: '🚀',
+                    },
+                    title: {
+                      tag: 'text',
+                      uuid: randomUuid(),
+                      value: 'Fast Performance',
+                    },
+                    description: {
+                      tag: 'text',
+                      uuid: randomUuid(),
+                      value:
+                        'Lightning-fast load times for better user experience',
+                    },
+                  },
+                },
+                {
+                  tag: 'object',
+                  uuid: randomUuid(),
+                  input: inputRef(inputLibrary.featureInput),
+                  value: {
+                    icon: {
+                      tag: 'text',
+                      uuid: randomUuid(),
+                      value: '🎨',
+                    },
+                    title: {
+                      tag: 'text',
+                      uuid: randomUuid(),
+                      value: 'Beautiful Design',
+                    },
+                    description: {
+                      tag: 'text',
+                      uuid: randomUuid(),
+                      value:
+                        'Stunning designs that convert visitors to customers',
+                    },
+                  },
+                },
+                {
+                  tag: 'object',
+                  uuid: randomUuid(),
+                  input: inputRef(inputLibrary.featureInput),
+                  value: {
+                    icon: {
+                      tag: 'text',
+                      uuid: randomUuid(),
+                      value: '🔒',
+                    },
+                    title: {
+                      tag: 'text',
+                      uuid: randomUuid(),
+                      value: 'Secure & Reliable',
+                    },
+                    description: {
+                      tag: 'text',
+                      uuid: randomUuid(),
+                      value:
+                        'Enterprise-grade security and 99.9% uptime guarantee',
+                    },
+                  },
+                },
+              ],
+            },
+          },
         },
+        // Card Grid Section
         {
-          tag: 'number',
+          tag: 'object',
           uuid: randomUuid(),
-          input: inputRef(basicNumberInput),
-          value: 100,
+          input: inputRef(inputLibrary.cardGridSectionInput),
+          value: {
+            title: {
+              tag: 'text',
+              uuid: randomUuid(),
+              value: 'Our Services',
+            },
+            description: {
+              tag: 'text',
+              uuid: randomUuid(),
+              value: 'Explore what we have to offer',
+            },
+            cards: {
+              tag: 'array',
+              uuid: randomUuid(),
+              value: [
+                {
+                  tag: 'object',
+                  uuid: randomUuid(),
+                  input: inputRef(inputLibrary.cardInput),
+                  value: {
+                    title: {
+                      tag: 'text',
+                      uuid: randomUuid(),
+                      value: 'Web Development',
+                    },
+                    description: {
+                      tag: 'text',
+                      uuid: randomUuid(),
+                      value: 'Custom websites tailored to your business needs',
+                    },
+                    image: {
+                      tag: 'object',
+                      uuid: randomUuid(),
+                      input: inputRef(inputLibrary.imageInput),
+                      value: {
+                        src: {
+                          tag: 'text',
+                          uuid: randomUuid(),
+                          value: 'https://via.placeholder.com/400x300',
+                        },
+                        alt: {
+                          tag: 'text',
+                          uuid: randomUuid(),
+                          value: 'Web Development',
+                        },
+                        width: {
+                          tag: 'number',
+                          uuid: randomUuid(),
+                          value: 400,
+                        },
+                        height: {
+                          tag: 'number',
+                          uuid: randomUuid(),
+                          value: 300,
+                        },
+                      },
+                    },
+                    button: {
+                      tag: 'object',
+                      uuid: randomUuid(),
+                      input: inputRef(inputLibrary.buttonInput),
+                      value: {
+                        text: {
+                          tag: 'text',
+                          uuid: randomUuid(),
+                          value: 'Learn More',
+                        },
+                        url: {
+                          tag: 'text',
+                          uuid: randomUuid(),
+                          value: '/services/web-dev',
+                        },
+                        variant: {
+                          tag: 'one-of',
+                          uuid: randomUuid(),
+                          input: inputRef(inputLibrary.buttonVariantInput),
+                          value: {
+                            tag: 'primitive',
+                            uuid: randomUuid(),
+                            input: inputRef(inputLibrary.buttonPrimaryVariant),
+                            value: 'primary',
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+                {
+                  tag: 'object',
+                  uuid: randomUuid(),
+                  input: inputRef(inputLibrary.cardInput),
+                  value: {
+                    title: {
+                      tag: 'text',
+                      uuid: randomUuid(),
+                      value: 'Mobile Apps',
+                    },
+                    description: {
+                      tag: 'text',
+                      uuid: randomUuid(),
+                      value: 'iOS and Android apps that users love',
+                    },
+                    image: {
+                      tag: 'object',
+                      uuid: randomUuid(),
+                      input: inputRef(inputLibrary.imageInput),
+                      value: {
+                        src: {
+                          tag: 'text',
+                          uuid: randomUuid(),
+                          value: 'https://via.placeholder.com/400x300',
+                        },
+                        alt: {
+                          tag: 'text',
+                          uuid: randomUuid(),
+                          value: 'Mobile Apps',
+                        },
+                        width: {
+                          tag: 'number',
+                          uuid: randomUuid(),
+                          value: 400,
+                        },
+                        height: {
+                          tag: 'number',
+                          uuid: randomUuid(),
+                          value: 300,
+                        },
+                      },
+                    },
+                    button: {
+                      tag: 'object',
+                      uuid: randomUuid(),
+                      input: inputRef(inputLibrary.buttonInput),
+                      value: {
+                        text: {
+                          tag: 'text',
+                          uuid: randomUuid(),
+                          value: 'View Portfolio',
+                        },
+                        url: {
+                          tag: 'text',
+                          uuid: randomUuid(),
+                          value: '/services/mobile',
+                        },
+                        variant: {
+                          tag: 'one-of',
+                          uuid: randomUuid(),
+                          input: inputRef(inputLibrary.buttonVariantInput),
+                          value: {
+                            tag: 'primitive',
+                            uuid: randomUuid(),
+                            input: inputRef(inputLibrary.buttonOutlineVariant),
+                            value: 'outline',
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              ],
+            },
+          },
         },
       ],
     },
@@ -367,16 +847,10 @@ export const YjsEditor = () => {
               p: 2,
             }}
           >
-            <Typography
-              variant="h6"
-              component="div"
-            >
-              Content Editor
-            </Typography>
             <Editor
               store={contentStore}
               inputStore={contentInputStore}
-              schema={inputLibrary.pageInput}
+              schema={inputLibrary.websitePageInput}
               rootUuid={rootUuid}
             />
           </Paper>
