@@ -4,6 +4,7 @@ import {
   Box,
   Divider,
   FormControl,
+  IconButton,
   Stack,
   Typography,
 } from '@mui/material'
@@ -17,11 +18,20 @@ import {
   useMemo,
   useState,
 } from 'react'
-import { Add as AddIcon, SwapHoriz as SwapIcon } from '@mui/icons-material'
+import {
+  Add as AddIcon,
+  SwapHoriz as SwapIcon,
+  DragIndicator as DragIndicatorIcon,
+  Delete as DeleteIcon,
+  ArrowUpward as ArrowUpwardIcon,
+  ArrowDownward as ArrowDownwardIcon,
+} from '@mui/icons-material'
+import { Reorder } from 'motion/react'
 import {
   ArrayContentInput,
   cloneContent,
   ContentInput,
+  ContentReference,
   FlatContent,
   isArrayContent,
   isOneOfContent,
@@ -153,13 +163,11 @@ const OneOfInputView: FunctionComponent<
         <Box
           sx={{
             position: 'relative',
-            p: 2,
-            pt: 1.5,
           }}
         >
           <ContentInputViewReferencedSchema
             uuid={content.value.valueUuid}
-            ContentInputView={ContentInputView}
+            ContentInputView={ContentInputView || ContentInputViewInternal}
           />
         </Box>
       </Stack>
@@ -174,6 +182,91 @@ const selectContentStoreByUuid = createSelector(
   [selectStore, selectUuid],
   (store: FlatContent, uuid: Uuid) => subStore(store, uuid),
 )
+
+const ArrayItemWrapper: FunctionComponent<{
+  children: ReactNode
+  value: ContentReference
+  index: number
+  total: number
+  onRemove: () => void
+  onMoveUp: () => void
+  onMoveDown: () => void
+}> = memo((props) => {
+  const { children, value, index, total, onRemove, onMoveUp, onMoveDown } =
+    props
+  return (
+    <Reorder.Item
+      value={value}
+      style={{
+        listStyle: 'none',
+      }}
+    >
+      <Box
+        sx={{
+          display: 'flex',
+          gap: 1,
+          alignItems: 'flex-start',
+          borderRadius: 1,
+        }}
+      >
+        <DragIndicatorIcon
+          fontSize="small"
+          sx={{
+            mt: 1,
+            cursor: 'grab',
+            '&:active': {
+              cursor: 'grabbing',
+            },
+            color: (theme) => theme.palette.text.secondary,
+          }}
+          style={{ touchAction: 'none' }}
+        />
+        <Box
+          display="flex"
+          flex={1}
+        >
+          {children}
+        </Box>
+        <Stack
+          direction="row"
+          spacing={0.5}
+          sx={{ mt: 0.5 }}
+        >
+          <IconButton
+            size="small"
+            onClick={onMoveUp}
+            disabled={index === 0}
+            sx={{
+              padding: '4px',
+            }}
+          >
+            <ArrowUpwardIcon fontSize="small" />
+          </IconButton>
+          <IconButton
+            size="small"
+            onClick={onMoveDown}
+            disabled={index === total - 1}
+            sx={{
+              padding: '4px',
+            }}
+          >
+            <ArrowDownwardIcon fontSize="small" />
+          </IconButton>
+          <IconButton
+            size="small"
+            onClick={onRemove}
+            color="default"
+            sx={{
+              padding: '4px',
+            }}
+          >
+            <DeleteIcon fontSize="small" />
+          </IconButton>
+        </Stack>
+      </Box>
+    </Reorder.Item>
+  )
+})
 
 const ArrayContentInputView: FunctionComponent<
   ContentInputViewProps<ArrayContentInput>
@@ -212,44 +305,95 @@ const ArrayContentInputView: FunctionComponent<
     })
   }
 
-  const createHandleMenuClick = (contentTemplate: FlatContent) => {
-    return () => {
-      update((draft) => {
-        const currentContent = draft.data[uuid]
-        if (!isArrayContent(currentContent)) {
-          return
-        }
-        const clonedStore = cloneContent(contentTemplate)
-
-        Object.assign(draft.data, clonedStore.data)
-        currentContent.value.push({
-          tag: 'reference',
-          uuid: randomUuid(),
-          valueUuid: clonedStore.rootUuid,
-        })
-      })
-    }
+  const handleReorder = (newOrder: ContentReference[]) => {
+    update((draft) => {
+      const currentContent = draft.data[uuid]
+      if (!isArrayContent(currentContent)) {
+        return
+      }
+      currentContent.value = newOrder
+    })
   }
+
+  const handleRemove = (index: number) => {
+    update((draft) => {
+      const currentContent = draft.data[uuid]
+      if (!isArrayContent(currentContent)) {
+        return
+      }
+      currentContent.value.splice(index, 1)
+    })
+  }
+
+  const handleMoveUp = (index: number) => {
+    if (index === 0) return
+    update((draft) => {
+      const currentContent = draft.data[uuid]
+      if (!isArrayContent(currentContent)) {
+        return
+      }
+      const item = currentContent.value[index]
+      currentContent.value.splice(index, 1)
+      currentContent.value.splice(index - 1, 0, item)
+    })
+  }
+
+  const handleMoveDown = (index: number) => {
+    update((draft) => {
+      const currentContent = draft.data[uuid]
+      if (!isArrayContent(currentContent)) {
+        return
+      }
+      if (index >= currentContent.value.length - 1) return
+      const item = currentContent.value[index]
+      currentContent.value.splice(index, 1)
+      currentContent.value.splice(index + 1, 0, item)
+    })
+  }
+
   return (
     <Stack
       sx={{
         gap: 2,
-        p: 2,
-        border: 1,
-        borderColor: 'divider',
-        borderRadius: 1,
+        // p: 2,
+        // border: 1,
+        // borderColor: 'divider',
+        // borderRadius: 1,
       }}
     >
-      {content.value.map((childContent) => (
-        <ContentInputViewReferencedSchema
-          key={childContent.uuid}
-          uuid={childContent.valueUuid}
-          ContentInputView={ContentInputView}
-        />
-      ))}
+      <Box
+        component={Reorder.Group}
+        axis="y"
+        values={content.value}
+        onReorder={handleReorder}
+        sx={{
+          padding: 0,
+          margin: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 1,
+        }}
+      >
+        {content.value.map((childContent, index) => (
+          <ArrayItemWrapper
+            key={childContent.uuid}
+            value={childContent}
+            index={index}
+            total={content.value.length}
+            onRemove={() => handleRemove(index)}
+            onMoveUp={() => handleMoveUp(index)}
+            onMoveDown={() => handleMoveDown(index)}
+          >
+            <ContentInputViewReferencedSchema
+              uuid={childContent.valueUuid}
+              ContentInputView={ContentInputView || ContentInputViewInternal}
+            />
+          </ArrayItemWrapper>
+        ))}
+      </Box>
       <Box
         display="inherit"
-        justifyContent="center"
+        justifyContent="flex-start"
       >
         <SelectContentFromTemplateView
           templates={schema.items}
@@ -374,7 +518,7 @@ const ContentPreview: FunctionComponent<{
 
 export const ContentInputViewReferencedSchema: FunctionComponent<{
   uuid: Uuid
-  ContentInputView: FunctionComponent<ContentInputViewProps<ContentInput>>
+  ContentInputView?: FunctionComponent<ContentInputViewProps<ContentInput>>
 }> = memo((props) => {
   const { uuid, ContentInputView = ContentInputViewInternal } = props
   const content = useContentByUuid(uuid)
