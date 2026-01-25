@@ -75,6 +75,10 @@ const buttonVariantInput = oneOfInput({
 const buttonInput = objectInput({
   label: 'Button',
   fields: {
+    type: primitiveInput({
+      label: 'Type',
+      value: 'button',
+    }),
     text: textInput({
       label: 'Button Text',
     }),
@@ -89,6 +93,10 @@ const buttonInput = objectInput({
 const imageInput = objectInput({
   label: 'Image',
   fields: {
+    type: primitiveInput({
+      label: 'Type',
+      value: 'image',
+    }),
     src: textInput({
       label: 'Image URL',
     }),
@@ -107,6 +115,10 @@ const imageInput = objectInput({
 // Card component
 const cardInput = objectInput({
   fields: {
+    type: primitiveInput({
+      label: 'Type',
+      value: 'card',
+    }),
     title: textInput({
       label: 'Title',
     }),
@@ -151,6 +163,10 @@ const alignInput = oneOfInput({
 const heroSectionInput = objectInput({
   label: 'Hero',
   fields: {
+    type: primitiveInput({
+      label: 'Type',
+      value: 'hero',
+    }),
     headline: textInput({
       label: 'Headline',
     }),
@@ -168,6 +184,10 @@ const heroSectionInput = objectInput({
 const featureInput = objectInput({
   label: 'Feature',
   fields: {
+    type: primitiveInput({
+      label: 'Type',
+      value: 'feature',
+    }),
     icon: textInput({
       label: 'Icon',
     }),
@@ -184,6 +204,10 @@ const featureInput = objectInput({
 const cardGridSectionInput = objectInput({
   label: 'Card Grid',
   fields: {
+    type: primitiveInput({
+      label: 'Type',
+      value: 'card-grid',
+    }),
     title: textInput({
       label: 'Section Title',
     }),
@@ -200,6 +224,10 @@ const cardGridSectionInput = objectInput({
 const featuresSectionInput = objectInput({
   label: 'Features',
   fields: {
+    type: primitiveInput({
+      label: 'Type',
+      value: 'features',
+    }),
     title: textInput({
       label: 'Section Title',
     }),
@@ -231,6 +259,11 @@ const websitePageInput = objectInput({
           uuid: randomUuid(),
           input: inputRef(heroSectionInput),
           value: {
+            type: {
+              tag: 'primitive',
+              uuid: randomUuid(),
+              value: 'hero',
+            },
             headline: {
               tag: 'text',
               uuid: randomUuid(),
@@ -246,6 +279,7 @@ const websitePageInput = objectInput({
               uuid: randomUuid(),
               input: inputRef(imageInput),
               value: {
+                type: { tag: 'primitive', uuid: randomUuid(), value: 'image' },
                 src: { tag: 'text', uuid: randomUuid(), value: '' },
                 alt: { tag: 'text', uuid: randomUuid(), value: '' },
                 width: { tag: 'number', uuid: randomUuid(), value: 1920 },
@@ -257,6 +291,7 @@ const websitePageInput = objectInput({
               uuid: randomUuid(),
               input: inputRef(buttonInput),
               value: {
+                type: { tag: 'primitive', uuid: randomUuid(), value: 'button' },
                 text: { tag: 'text', uuid: randomUuid(), value: 'Click Here' },
                 url: { tag: 'text', uuid: randomUuid(), value: '#' },
                 variant: {
@@ -277,6 +312,7 @@ const websitePageInput = objectInput({
               uuid: randomUuid(),
               input: inputRef(buttonInput),
               value: {
+                type: { tag: 'primitive', uuid: randomUuid(), value: 'button' },
                 text: { tag: 'text', uuid: randomUuid(), value: 'Learn More' },
                 url: { tag: 'text', uuid: randomUuid(), value: '#' },
                 variant: {
@@ -401,6 +437,11 @@ const contentTree = {
           uuid: randomUuid(),
           input: inputRef(inputLibrary.heroSectionInput),
           value: {
+            type: {
+              tag: 'primitive',
+              uuid: randomUuid(),
+              value: 'hero',
+            },
             headline: {
               tag: 'text',
               uuid: randomUuid(),
@@ -416,6 +457,7 @@ const contentTree = {
               uuid: randomUuid(),
               input: inputRef(inputLibrary.imageInput),
               value: {
+                type: { tag: 'primitive', uuid: randomUuid(), value: 'image' },
                 src: {
                   tag: 'text',
                   uuid: randomUuid(),
@@ -443,6 +485,11 @@ const contentTree = {
               uuid: randomUuid(),
               input: inputRef(inputLibrary.buttonInput),
               value: {
+                type: {
+                  tag: 'primitive',
+                  uuid: randomUuid(),
+                  value: 'button',
+                },
                 text: {
                   tag: 'text',
                   uuid: randomUuid(),
@@ -471,6 +518,11 @@ const contentTree = {
               uuid: randomUuid(),
               input: inputRef(inputLibrary.buttonInput),
               value: {
+                type: {
+                  tag: 'primitive',
+                  uuid: randomUuid(),
+                  value: 'button',
+                },
                 text: {
                   tag: 'text',
                   uuid: randomUuid(),
@@ -513,6 +565,11 @@ const contentTree = {
           uuid: randomUuid(),
           input: inputRef(inputLibrary.featuresSectionInput),
           value: {
+            type: {
+              tag: 'primitive',
+              uuid: randomUuid(),
+              value: 'features',
+            },
             title: {
               tag: 'text',
               uuid: randomUuid(),
@@ -532,6 +589,11 @@ const contentTree = {
                   uuid: randomUuid(),
                   input: inputRef(inputLibrary.featureInput),
                   value: {
+                    type: {
+                      tag: 'primitive',
+                      uuid: randomUuid(),
+                      value: 'feature',
+                    },
                     icon: {
                       tag: 'text',
                       uuid: randomUuid(),
@@ -555,6 +617,11 @@ const contentTree = {
                   uuid: randomUuid(),
                   input: inputRef(inputLibrary.featureInput),
                   value: {
+                    type: {
+                      tag: 'primitive',
+                      uuid: randomUuid(),
+                      value: 'feature',
+                    },
                     icon: {
                       tag: 'text',
                       uuid: randomUuid(),
@@ -578,6 +645,11 @@ const contentTree = {
                   uuid: randomUuid(),
                   input: inputRef(inputLibrary.featureInput),
                   value: {
+                    type: {
+                      tag: 'primitive',
+                      uuid: randomUuid(),
+                      value: 'feature',
+                    },
                     icon: {
                       tag: 'text',
                       uuid: randomUuid(),
@@ -606,6 +678,11 @@ const contentTree = {
           uuid: randomUuid(),
           input: inputRef(inputLibrary.cardGridSectionInput),
           value: {
+            type: {
+              tag: 'primitive',
+              uuid: randomUuid(),
+              value: 'card-grid',
+            },
             title: {
               tag: 'text',
               uuid: randomUuid(),
@@ -625,6 +702,11 @@ const contentTree = {
                   uuid: randomUuid(),
                   input: inputRef(inputLibrary.cardInput),
                   value: {
+                    type: {
+                      tag: 'primitive',
+                      uuid: randomUuid(),
+                      value: 'card',
+                    },
                     title: {
                       tag: 'text',
                       uuid: randomUuid(),
@@ -640,6 +722,11 @@ const contentTree = {
                       uuid: randomUuid(),
                       input: inputRef(inputLibrary.imageInput),
                       value: {
+                        type: {
+                          tag: 'primitive',
+                          uuid: randomUuid(),
+                          value: 'image',
+                        },
                         src: {
                           tag: 'text',
                           uuid: randomUuid(),
@@ -667,6 +754,11 @@ const contentTree = {
                       uuid: randomUuid(),
                       input: inputRef(inputLibrary.buttonInput),
                       value: {
+                        type: {
+                          tag: 'primitive',
+                          uuid: randomUuid(),
+                          value: 'button',
+                        },
                         text: {
                           tag: 'text',
                           uuid: randomUuid(),
@@ -697,6 +789,11 @@ const contentTree = {
                   uuid: randomUuid(),
                   input: inputRef(inputLibrary.cardInput),
                   value: {
+                    type: {
+                      tag: 'primitive',
+                      uuid: randomUuid(),
+                      value: 'card',
+                    },
                     title: {
                       tag: 'text',
                       uuid: randomUuid(),
@@ -712,6 +809,11 @@ const contentTree = {
                       uuid: randomUuid(),
                       input: inputRef(inputLibrary.imageInput),
                       value: {
+                        type: {
+                          tag: 'primitive',
+                          uuid: randomUuid(),
+                          value: 'image',
+                        },
                         src: {
                           tag: 'text',
                           uuid: randomUuid(),
@@ -739,6 +841,11 @@ const contentTree = {
                       uuid: randomUuid(),
                       input: inputRef(inputLibrary.buttonInput),
                       value: {
+                        type: {
+                          tag: 'primitive',
+                          uuid: randomUuid(),
+                          value: 'button',
+                        },
                         text: {
                           tag: 'text',
                           uuid: randomUuid(),
