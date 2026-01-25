@@ -822,7 +822,6 @@ export const YjsEditor = () => {
         sx={{
           minHeight: '100vh',
           display: 'flex',
-          alignItems: 'center',
           justifyContent: 'center',
           bgcolor: 'background.default',
           p: 2,
@@ -841,12 +840,7 @@ export const YjsEditor = () => {
             open={drawerOpen}
             onClose={() => setDrawerOpen(false)}
           />
-          <Paper
-            sx={{
-              borderRadius: 2,
-              p: 2,
-            }}
-          >
+          <Paper>
             <Editor
               store={contentStore}
               inputStore={contentInputStore}

@@ -248,6 +248,8 @@ const ArrayItemWrapper: FunctionComponent<{
               }),
             left: '50%',
             transform: 'translateX(-50%)',
+            backgroundColor: 'background.paper',
+            borderRadius: 1,
           }}
         >
           <IconButton
