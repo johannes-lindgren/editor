@@ -22,6 +22,9 @@ import {
   Add as AddIcon,
   SwapHoriz as SwapIcon,
   DragIndicator as DragIndicatorIcon,
+  Delete as DeleteIcon,
+  ArrowUpward as ArrowUpwardIcon,
+  ArrowDownward as ArrowDownwardIcon,
 } from '@mui/icons-material'
 import { Reorder } from 'motion/react'
 import {
@@ -183,8 +186,14 @@ const selectContentStoreByUuid = createSelector(
 const ArrayItemWrapper: FunctionComponent<{
   children: ReactNode
   value: ContentReference
+  index: number
+  total: number
+  onRemove: () => void
+  onMoveUp: () => void
+  onMoveDown: () => void
 }> = memo((props) => {
-  const { children, value } = props
+  const { children, value, index, total, onRemove, onMoveUp, onMoveDown } =
+    props
   return (
     <Reorder.Item
       value={value}
@@ -218,6 +227,42 @@ const ArrayItemWrapper: FunctionComponent<{
         >
           {children}
         </Box>
+        <Stack
+          direction="row"
+          spacing={0.5}
+          sx={{ mt: 0.5 }}
+        >
+          <IconButton
+            size="small"
+            onClick={onMoveUp}
+            disabled={index === 0}
+            sx={{
+              padding: '4px',
+            }}
+          >
+            <ArrowUpwardIcon fontSize="small" />
+          </IconButton>
+          <IconButton
+            size="small"
+            onClick={onMoveDown}
+            disabled={index === total - 1}
+            sx={{
+              padding: '4px',
+            }}
+          >
+            <ArrowDownwardIcon fontSize="small" />
+          </IconButton>
+          <IconButton
+            size="small"
+            onClick={onRemove}
+            color="default"
+            sx={{
+              padding: '4px',
+            }}
+          >
+            <DeleteIcon fontSize="small" />
+          </IconButton>
+        </Stack>
       </Box>
     </Reorder.Item>
   )
@@ -270,6 +315,42 @@ const ArrayContentInputView: FunctionComponent<
     })
   }
 
+  const handleRemove = (index: number) => {
+    update((draft) => {
+      const currentContent = draft.data[uuid]
+      if (!isArrayContent(currentContent)) {
+        return
+      }
+      currentContent.value.splice(index, 1)
+    })
+  }
+
+  const handleMoveUp = (index: number) => {
+    if (index === 0) return
+    update((draft) => {
+      const currentContent = draft.data[uuid]
+      if (!isArrayContent(currentContent)) {
+        return
+      }
+      const item = currentContent.value[index]
+      currentContent.value.splice(index, 1)
+      currentContent.value.splice(index - 1, 0, item)
+    })
+  }
+
+  const handleMoveDown = (index: number) => {
+    update((draft) => {
+      const currentContent = draft.data[uuid]
+      if (!isArrayContent(currentContent)) {
+        return
+      }
+      if (index >= currentContent.value.length - 1) return
+      const item = currentContent.value[index]
+      currentContent.value.splice(index, 1)
+      currentContent.value.splice(index + 1, 0, item)
+    })
+  }
+
   return (
     <Stack
       sx={{
@@ -293,10 +374,15 @@ const ArrayContentInputView: FunctionComponent<
           gap: 1,
         }}
       >
-        {content.value.map((childContent) => (
+        {content.value.map((childContent, index) => (
           <ArrayItemWrapper
             key={childContent.uuid}
             value={childContent}
+            index={index}
+            total={content.value.length}
+            onRemove={() => handleRemove(index)}
+            onMoveUp={() => handleMoveUp(index)}
+            onMoveDown={() => handleMoveDown(index)}
           >
             <ContentInputViewReferencedSchema
               uuid={childContent.valueUuid}
