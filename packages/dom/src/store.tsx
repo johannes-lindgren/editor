@@ -6,7 +6,6 @@ import {
   InputMap,
   Uuid,
 } from '@editor/model'
-import * as React from 'react'
 import {
   createContext,
   FunctionComponent,
